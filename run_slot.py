@@ -197,6 +197,19 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
     return clean
 
 
+def _send_debug(msg: str, slot: int):
+    try:
+        bot_token = os.environ["TELEGRAM_BOT_TOKEN"]
+        chat_id = os.environ["TELEGRAM_CHAT_ID"]
+        requests.post(
+            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+            json={"chat_id": chat_id, "text": f"🔧 DEBUG SLOT {slot}\n\n{msg}"},
+            timeout=10,
+        )
+    except Exception:
+        pass
+
+
 def send_telegram(text: str, slot: int):
     bot_token = os.environ["TELEGRAM_BOT_TOKEN"]
     chat_id = os.environ["TELEGRAM_CHAT_ID"]
@@ -263,7 +276,7 @@ def main():
     print(f"수집된 기사: {article_count}개")
 
     if not articles:
-        print("RSS 기사 없음 — 종료")
+        _send_debug(f"[SLOT {slot}] RSS 기사 0건 — 수집 실패", slot)
         sys.exit(0)
 
     system_prompt = build_system_prompt(slot, blacklist)
@@ -275,6 +288,13 @@ def main():
     print(result[:200] + "..." if len(result) > 200 else result)
 
     if not is_valid_result(result):
+        _send_debug(
+            f"[SLOT {slot}] is_valid_result 실패\n"
+            f"길이: {len(result)}자\n"
+            f"출처 포함: {'출처:' in result or 'http' in result}\n"
+            f"Claude 출력:\n{result[:300]}",
+            slot,
+        )
         print("유효한 소재 없음 — 텔레그램 전송 건너뜀")
         print(f"=== SLOT {slot} 완료 (전송 없음) ===")
         sys.exit(0)
