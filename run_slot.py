@@ -173,6 +173,23 @@ def extract_keywords(result_text: str) -> list:
     return keywords
 
 
+NO_CONTENT_MARKERS = [
+    "소재 없음", "채택 불가", "접근 불가", "데이터 부재", "결과 없음",
+    "기사 없음", "없음", "불가", "모의 실행", "확인 불가", "찾을 수 없",
+]
+
+
+def is_valid_result(text: str) -> bool:
+    if len(text) < 30:
+        return False
+    if "출처:" not in text and "http" not in text:
+        return False
+    lower = text.lower()
+    if any(marker in lower for marker in NO_CONTENT_MARKERS):
+        return False
+    return True
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--slot", type=int, required=True, choices=range(1, 7))
@@ -193,6 +210,11 @@ def main():
     result = call_claude(system_prompt, slot)
     print(f"결과: {len(result)}자")
     print(result[:200] + "..." if len(result) > 200 else result)
+
+    if not is_valid_result(result):
+        print("유효한 소재 없음 — 텔레그램 전송 건너뜀")
+        print(f"=== SLOT {slot} 완료 (전송 없음) ===")
+        sys.exit(0)
 
     send_telegram(result, slot)
 
