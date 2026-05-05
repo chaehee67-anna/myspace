@@ -82,3 +82,10 @@ jobs:
           git add history/history.json
           git diff --staged --quiet || git commit -m "chore: update history [slot ${{ steps.slot.outputs.number }}]"
           git push
+
+      - name: 실패 알림
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d text="❌ SLOT ${{ steps.slot.outputs.number }} 실패%0A$(TZ='Asia/Seoul' date '+%Y-%m-%d %H:%M') KST%0Ahttps://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
