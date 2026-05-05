@@ -18,6 +18,8 @@ on:
 jobs:
   run-slot:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: 레포 체크아웃
         uses: actions/checkout@v4

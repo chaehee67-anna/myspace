@@ -89,11 +89,8 @@ def add_to_history(data, new_items):
 def build_system_prompt(slot: int, blacklist: list) -> str:
     core = (SKILLS_DIR / "core.md").read_text(encoding="utf-8")
     slot_skill = (SKILLS_DIR / SLOT_SKILL_MAP[slot]).read_text(encoding="utf-8")
-    blacklist_section = "## 금일 소재 블랙리스트 (재제안 금지)\n"
-    if blacklist:
-        blacklist_section += "\n".join(f"- {item}" for item in blacklist)
-    else:
-        blacklist_section += "- (없음)"
+    bl = ", ".join(blacklist) if blacklist else "없음"
+    blacklist_section = f"재제안 금지 소재: {bl}"
     return f"{core}\n\n---\n\n{slot_skill}\n\n---\n\n{blacklist_section}"
 
 
@@ -102,14 +99,10 @@ def call_claude(system_prompt: str, slot: int) -> str:
     today = today_kst()
 
     user_message = (
-        f"오늘 날짜: {today} KST\n"
+        f"오늘: {today} KST\n"
         f"슬롯: {SLOT_LABEL[slot]}\n\n"
-        f"web_search로 리서치 후 아래 형식으로만 출력해줘. 다른 설명 없이.\n\n"
-        f"소재: [팩트 1줄]\n"
-        f"날짜: [기사 실제 날짜]\n"
-        f"게시글:\n[본문]\n\n"
-        f"출처: [URL]\n\n"
-        f"주의: 날짜는 기사 실제 날짜만. 추측 금지."
+        f"web_search로 최신 기사 검색 후, X 게시글 본문과 출처 URL만 출력하라.\n"
+        f"형식:\n[게시글 본문]\n\n출처: [URL]"
     )
 
     tools = [{"type": "web_search_20250305", "name": "web_search"}]
@@ -118,9 +111,10 @@ def call_claude(system_prompt: str, slot: int) -> str:
         try:
             message = client.messages.create(
                 model="claude-haiku-4-5-20251001",
-                max_tokens=800,
+                max_tokens=400,
                 system=system_prompt,
                 tools=tools,
+                tool_choice={"type": "tool", "name": "web_search"},
                 messages=[{"role": "user", "content": user_message}],
             )
             break
@@ -136,7 +130,8 @@ def call_claude(system_prompt: str, slot: int) -> str:
         if hasattr(block, "text")
     ]
     raw = "\n".join(result_parts).strip()
-    clean = re.sub(r'[*_`#\[\]()~>+=|{}!]', '', raw)
+    clean = re.sub(r'[*_`\[\]()~>+=|{}!]', '', raw)
+    clean = re.sub(r'(?<!\w)#', '', clean)
     return clean
 
 
