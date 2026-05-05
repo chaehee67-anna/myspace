@@ -41,14 +41,15 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "number=${{ github.event.inputs.slot }}" >> $GITHUB_OUTPUT
           else
-            HOUR=$(TZ="Asia/Seoul" date +"%H%M")
-            if   [ "$HOUR" -ge "0700" ] && [ "$HOUR" -lt "0900" ]; then echo "number=1" >> $GITHUB_OUTPUT
-            elif [ "$HOUR" -ge "0900" ] && [ "$HOUR" -lt "1100" ]; then echo "number=2" >> $GITHUB_OUTPUT
-            elif [ "$HOUR" -ge "1100" ] && [ "$HOUR" -lt "1400" ]; then echo "number=3" >> $GITHUB_OUTPUT
-            elif [ "$HOUR" -ge "1400" ] && [ "$HOUR" -lt "1600" ]; then echo "number=4" >> $GITHUB_OUTPUT
-            elif [ "$HOUR" -ge "1600" ] && [ "$HOUR" -lt "1830" ]; then echo "number=5" >> $GITHUB_OUTPUT
-            else echo "number=6" >> $GITHUB_OUTPUT
-            fi
+            case "${{ github.event.schedule }}" in
+              "0 22 * * *")  echo "number=1" >> $GITHUB_OUTPUT ;;
+              "30 0 * * *")  echo "number=2" >> $GITHUB_OUTPUT ;;
+              "0 3 * * *")   echo "number=3" >> $GITHUB_OUTPUT ;;
+              "0 6 * * *")   echo "number=4" >> $GITHUB_OUTPUT ;;
+              "30 8 * * *")  echo "number=5" >> $GITHUB_OUTPUT ;;
+              "0 10 * * *")  echo "number=6" >> $GITHUB_OUTPUT ;;
+              *)             echo "number=6" >> $GITHUB_OUTPUT ;;
+            esac
           fi
 
       - name: 슬롯 실행
