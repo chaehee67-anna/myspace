@@ -2,12 +2,12 @@ name: hee_lhm slot runner
 
 on:
   schedule:
-    - cron: '0 22 * * *'   # SLOT 1 — 07:00 KST
-    - cron: '30 0 * * *'   # SLOT 2 — 09:30 KST
-    - cron: '0 3 * * *'    # SLOT 3 — 12:00 KST
-    - cron: '0 6 * * *'    # SLOT 4 — 15:00 KST
-    - cron: '30 8 * * *'   # SLOT 5 — 17:30 KST
-    - cron: '0 10 * * *'   # SLOT 6 — 19:00 KST
+    - cron: '0 22 * * *'
+    - cron: '30 0 * * *'
+    - cron: '0 3 * * *'
+    - cron: '0 6 * * *'
+    - cron: '30 8 * * *'
+    - cron: '0 10 * * *'
   workflow_dispatch:
     inputs:
       slot:
@@ -51,10 +51,9 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python run_slot.py --slot ${{ steps.slot.outputs.number }}
+        run: python run_slot.py --slot ${{ steps.slot.outputs.number }}
 
-- name: history.json 커밋
+      - name: history.json 커밋
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
