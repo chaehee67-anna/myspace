@@ -48,6 +48,21 @@ jobs:
             fi
           fi
 
+      - name: 스킬 파일 복원
+        env:
+          SKILL_CORE: ${{ secrets.SKILL_CORE }}
+          SKILL_SLOT1: ${{ secrets.SKILL_SLOT1 }}
+          SKILL_SLOT2: ${{ secrets.SKILL_SLOT2 }}
+          SKILL_SLOT34: ${{ secrets.SKILL_SLOT34 }}
+          SKILL_SLOT56: ${{ secrets.SKILL_SLOT56 }}
+        run: |
+          mkdir -p skills
+          printf '%s' "$SKILL_CORE"  > skills/core.md
+          printf '%s' "$SKILL_SLOT1" > skills/slot1.md
+          printf '%s' "$SKILL_SLOT2" > skills/slot2.md
+          printf '%s' "$SKILL_SLOT34" > skills/slot3-4.md
+          printf '%s' "$SKILL_SLOT56" > skills/slot5-6.md
+
       - name: 슬롯 실행
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
