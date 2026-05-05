@@ -7,6 +7,7 @@ GitHub Actions에서 호출됨
 import argparse
 import json
 import os
+import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -33,12 +34,12 @@ SLOT_SKILL_MAP = {
 }
 
 SLOT_LABEL = {
-    1: "SLOT 1 — 조간 (07:00)",
-    2: "SLOT 2 — 정부브리핑 (09:30)",
-    3: "SLOT 3 — 커뮤니티 (12:00)",
-    4: "SLOT 4 — 커뮤니티 심화 (15:00)",
-    5: "SLOT 5 — 유튜브+비주류 (17:30)",
-    6: "SLOT 6 — 유튜브 클립 (19:00)",
+    1: "SLOT 1 - 조간 (07:00)",
+    2: "SLOT 2 - 정부브리핑 (09:30)",
+    3: "SLOT 3 - 커뮤니티 (12:00)",
+    4: "SLOT 4 - 커뮤니티 심화 (15:00)",
+    5: "SLOT 5 - 유튜브+비주류 (17:30)",
+    6: "SLOT 6 - 유튜브 클립 (19:00)",
 }
 
 
@@ -101,7 +102,7 @@ def build_system_prompt(slot: int, blacklist: list) -> str:
     return f"{core}\n\n---\n\n{slot_skill}\n\n---\n\n{blacklist_section}"
 
 
-# ── Anthropic API 호출 ──────────────────────────────────────────
+# ── Anthropic API 호출 (web_search 툴 포함) ─────────────────────
 def call_claude(system_prompt: str, slot: int) -> str:
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     today = today_kst()
@@ -109,17 +110,31 @@ def call_claude(system_prompt: str, slot: int) -> str:
     user_message = (
         f"오늘 날짜: {today} KST\n"
         f"현재 슬롯: {SLOT_LABEL[slot]}\n\n"
-        f"위 지침에 따라 리서치를 진행하고, "
+        f"위 지침에 따라 web_search 툴을 사용해 실시간 리서치를 진행하고, "
         f"소재 팩트 + 출처 링크 형태로만 결과를 전달해줘."
     )
 
+    # web_search 툴 활성화 (Sonnet 이상에서만 지원)
+    tools = [{"type": "web_search_20250305", "name": "web_search"}]
+
     message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=1500,
+        model="claude-sonnet-4-20250514",
+        max_tokens=2000,
         system=system_prompt,
+        tools=tools,
         messages=[{"role": "user", "content": user_message}],
     )
-    return message.content[0].text
+
+    # 텍스트 블록만 추출 (tool_use / tool_result 블록 제외)
+    result_parts = [
+        block.text for block in message.content
+        if hasattr(block, "text")
+    ]
+    raw = "\n".join(result_parts).strip()
+
+    # 마크다운 특수문자 제거 (텔레그램 plain text 전송용)
+    clean = re.sub(r'[*_`#]', '', raw)
+    return clean
 
 
 # ── 텔레그램 발송 ───────────────────────────────────────────────
@@ -129,13 +144,17 @@ def send_telegram(text: str, slot: int):
     label = SLOT_LABEL[slot]
     today = today_kst()
 
-    full_message = f"📋 *{label}*\n🗓 {today}\n\n{text}"
+    # plain text 전송 (parse_mode 없음)
+    full_message = f"📋 {label}\n🗓 {today}\n\n{text}"
+
+    # 텔레그램 메시지 최대 4096자 제한
+    if len(full_message) > 4096:
+        full_message = full_message[:4090] + "\n..."
 
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {
         "chat_id": chat_id,
         "text": full_message,
-        "parse_mode": "Markdown",
         "disable_web_page_preview": False,
     }
     resp = requests.post(url, json=payload, timeout=10)
@@ -149,10 +168,6 @@ def send_telegram(text: str, slot: int):
 
 # ── 결과에서 소재 키워드 추출 (이력 등록용) ──────────────────────
 def extract_keywords(result_text: str) -> list:
-    """
-    결과 텍스트 첫 줄들에서 핵심 키워드 추출
-    완벽한 파싱보다 간단하게 처리
-    """
     keywords = []
     for line in result_text.split("\n"):
         line = line.strip().lstrip("-•*").strip()
