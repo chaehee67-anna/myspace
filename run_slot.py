@@ -124,8 +124,15 @@ HEADERS = {
 }
 
 
+SLOT_MAX_HOURS = {
+    1: 12, 2: 12, 3: 24, 4: 24, 5: 24, 6: 48,
+}
+
+
 def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
     feed_keys = SLOT_RSS_MAP[slot]
+    max_hours = SLOT_MAX_HOURS[slot]
+    cutoff = datetime.now(KST) - timedelta(hours=max_hours)
     articles = []
 
     for key in feed_keys:
@@ -139,13 +146,25 @@ def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
                 print(f"RSS [{key}] {source}: {count}개 항목 수신")
                 if count == 0:
                     continue
-                for entry in feed.entries[:10]:
+                filtered = 0
+                for entry in feed.entries[:20]:
                     title = entry.get("title", "").strip()
                     link = entry.get("link", "").strip()
+                    if not title or not link:
+                        continue
+                    # 날짜 필터링
+                    pub = entry.get("published_parsed") or entry.get("updated_parsed")
+                    if pub:
+                        import calendar
+                        pub_dt = datetime.fromtimestamp(calendar.timegm(pub), tz=KST)
+                        if pub_dt < cutoff:
+                            continue
                     summary = re.sub(r"<[^>]+>", "", entry.get("summary", ""))[:200].strip()
-                    if title and link:
-                        articles.append(f"제목: {title}\n요약: {summary}\n링크: {link}")
-                break  # 성공하면 폴백 불필요
+                    articles.append(f"제목: {title}\n요약: {summary}\n링크: {link}")
+                    filtered += 1
+                print(f"  → 날짜 필터 후: {filtered}개 ({max_hours}h 이내)")
+                if filtered > 0:
+                    break
             except Exception as e:
                 print(f"RSS 파싱 실패 [{key}] {source}: {e}")
 
