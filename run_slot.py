@@ -151,6 +151,7 @@ def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
     max_hours = SLOT_MAX_HOURS[slot]
     now = datetime.now(KST)
     cutoff = now - timedelta(hours=max_hours)
+    wide_cutoff = now - timedelta(days=7)  # 폴백 재수집 시 최대 허용 범위
     articles: list[tuple[datetime, str]] = []
 
     for key in feed_keys:
@@ -173,21 +174,27 @@ def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
                     if not title or not link:
                         continue
                     pub = entry.get("published_parsed") or entry.get("updated_parsed")
-                    pub_dt = datetime.fromtimestamp(calendar.timegm(pub), tz=KST) if pub else now
+                    if not pub:
+                        continue  # 발행일 없는 항목 제외
+                    pub_dt = datetime.fromtimestamp(calendar.timegm(pub), tz=KST)
                     if pub_dt < cutoff:
                         continue
                     summary = re.sub(r"<[^>]+>", "", entry.get("summary", ""))[:200].strip()
                     batch.append((pub_dt, f"제목: {title}\n요약: {summary}\n링크: {link}"))
-                # 날짜 필터 후 0건이면 필터 없이 재시도
+                # 날짜 필터 후 0건이면 7일 이내로 완화해서 재시도
                 if not batch:
-                    print(f"  → 날짜 필터 후 0건, 필터 없이 재수집")
+                    print(f"  → 날짜 필터 후 0건, 7일 이내로 완화 재수집")
                     for entry in feed.entries[:10]:
                         title = entry.get("title", "").strip()
                         link = entry.get("link", "").strip()
                         if not title or not link:
                             continue
                         pub = entry.get("published_parsed") or entry.get("updated_parsed")
-                        pub_dt = datetime.fromtimestamp(calendar.timegm(pub), tz=KST) if pub else now
+                        if not pub:
+                            continue
+                        pub_dt = datetime.fromtimestamp(calendar.timegm(pub), tz=KST)
+                        if pub_dt < wide_cutoff:
+                            continue
                         summary = re.sub(r"<[^>]+>", "", entry.get("summary", ""))[:200].strip()
                         batch.append((pub_dt, f"제목: {title}\n요약: {summary}\n링크: {link}"))
                 print(f"  → 최종: {len(batch)}개")
