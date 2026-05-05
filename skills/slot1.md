@@ -10,13 +10,9 @@
 - https://www.hankookilbo.com/news/society
 - https://www.ohmynews.com
 - https://www.pressian.com
-- https://www.korea.kr
 
 ## STEP 0 — web_search
 - `정치 사회 오늘 아침`
-- `대통령실 발표`
-- '청와대 브리핑'
-- '대변인실 브리핑'
 
 ## 채택 기준
 - 당일 조간 송고 기사만
