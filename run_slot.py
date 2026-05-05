@@ -107,12 +107,15 @@ def call_claude(system_prompt: str, slot: int) -> str:
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     today = today_kst()
 
-    user_message = (
+   user_message = (
         f"오늘 날짜: {today} KST\n"
-        f"현재 슬롯: {SLOT_LABEL[slot]}\n\n"
-        f"위 지침에 따라 web_search 툴을 사용해 실시간 리서치를 진행하고, "
-        f"소재를 채택한 뒤 게시글까지 바로 작성해줘.\n"
-        f"소재 팩트 + 출처 링크 형태로만 결과를 전달해줘."
+        f"슬롯: {SLOT_LABEL[slot]}\n\n"
+        f"web_search로 리서치 후 아래 형식으로만 출력해줘. 다른 설명 없이.\n\n"
+        f"소재: [팩트 1줄]\n"
+        f"날짜: [기사 실제 날짜]\n"
+        f"게시글:\n[본문]\n\n"
+        f"출처: [URL]\n\n"
+        f"주의: 날짜는 기사 실제 날짜만. 추측 금지."
     )
 
     # web_search 툴 활성화 (Sonnet 이상에서만 지원)
@@ -134,7 +137,7 @@ def call_claude(system_prompt: str, slot: int) -> str:
     raw = "\n".join(result_parts).strip()
 
     # 마크다운 특수문자 제거 (텔레그램 plain text 전송용)
-    clean = re.sub(r'[*_`#\[\]()~>+=|{}.!-]', '', raw)
+    clean = re.sub(r'[*_`#\[\]()~>+=|{}!]', '', raw)
     return clean
 
 
