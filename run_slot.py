@@ -174,10 +174,12 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
     user_message = (
         f"오늘: {today} KST\n"
         f"슬롯: {SLOT_LABEL[slot]}\n\n"
-        f"아래 기사 목록에서 슬롯 조건에 가장 가까운 기사를 반드시 1개 선택해 X 게시글을 작성하라.\n"
-        f"완벽한 조건의 기사가 없어도 목록 중 가장 적합한 기사로 작성한다. 거절하지 마라.\n"
-        f"주의: 분석·설명·이유 없이 아래 형식만 출력하라.\n\n"
-        f"[게시글 본문]\n\n출처: [URL]\n\n"
+        f"아래 기사 목록에서 슬롯 조건에 맞는 기사를 최대 3개 선택해 아래 형식으로만 출력하라.\n"
+        f"설명·분석·게시글 작성 없이 제목과 링크만 출력한다.\n\n"
+        f"형식:\n"
+        f"1. [제목]\n[링크]\n\n"
+        f"2. [제목]\n[링크]\n\n"
+        f"3. [제목]\n[링크]\n\n"
         f"--- 기사 목록 ---\n{articles}"
     )
 
@@ -255,9 +257,9 @@ NO_CONTENT_MARKERS = [
 
 
 def is_valid_result(text: str) -> bool:
-    if len(text) < 30:
+    if len(text) < 20:
         return False
-    if "출처:" not in text and "http" not in text:
+    if "http" not in text:
         return False
     if any(m in text for m in NO_CONTENT_MARKERS):
         return False
