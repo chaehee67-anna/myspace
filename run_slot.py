@@ -48,7 +48,9 @@ RSS_FEEDS = {
     "society":  "https://news.naver.com/main/rss/listRss.naver?sectionId=102",
     "world":    "https://news.naver.com/main/rss/listRss.naver?sectionId=104",
     "it":       "https://news.naver.com/main/rss/listRss.naver?sectionId=105",
-    # 슬롯6 전용: 유튜브 채널 언급 뉴스 (Google News 검색)
+    # 슬롯3·4 전용: 커뮤니티 반응 정치 뉴스
+    "community": "https://news.google.com/rss/search?q=이재명+OR+윤석열+OR+국힘+OR+민주당+누리꾼+OR+커뮤니티+OR+반응&hl=ko&gl=KR&ceid=KR:ko",
+    # 슬롯6 전용: 유튜브 채널 언급 뉴스
     "youtube_politics": "https://news.google.com/rss/search?q=매불쇼+OR+뉴스하이킥+OR+뉴스타파+OR+장르만여의도+OR+시방쇼&hl=ko&gl=KR&ceid=KR:ko",
     "youtube_media":    "https://news.google.com/rss/search?q=MBC뉴스+유튜브+OR+JTBC+유튜브+OR+시사IN+유튜브&hl=ko&gl=KR&ceid=KR:ko",
 }
@@ -60,6 +62,7 @@ RSS_FALLBACK = {
     "society":          "https://news.google.com/rss/search?q=한국+사회+누리꾼+OR+커뮤니티+반응&hl=ko&gl=KR&ceid=KR:ko",
     "world":            "https://news.google.com/rss/search?q=한국+국제&hl=ko&gl=KR&ceid=KR:ko",
     "it":               "https://news.google.com/rss/search?q=한국+IT+기술&hl=ko&gl=KR&ceid=KR:ko",
+    "community":        "https://news.google.com/rss/search?q=이재명+OR+윤석열+OR+국힘+누리꾼+OR+커뮤니티&hl=ko&gl=KR&ceid=KR:ko",
     "youtube_politics": "https://news.google.com/rss/search?q=매불쇼+OR+뉴스하이킥+OR+뉴스타파&hl=ko&gl=KR&ceid=KR:ko",
     "youtube_media":    "https://news.google.com/rss/search?q=유튜브+정치+클립+화제&hl=ko&gl=KR&ceid=KR:ko",
 }
@@ -67,8 +70,8 @@ RSS_FALLBACK = {
 SLOT_RSS_MAP = {
     1: ["politics", "society"],
     2: ["politics", "economy"],
-    3: ["politics", "society"],
-    4: ["politics", "society"],
+    3: ["politics", "community"],
+    4: ["politics", "community"],
     5: ["politics", "society"],
     6: ["youtube_politics", "youtube_media"],
 }
@@ -193,8 +196,8 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
     user_message = (
         f"오늘: {today} KST\n"
         f"슬롯: {SLOT_LABEL[slot]}\n\n"
-        f"아래 기사 목록에서 슬롯 조건에 맞는 기사를 최대 3개 선택해 아래 형식으로만 출력하라.\n"
-        f"설명·분석·게시글 작성 없이 제목과 링크만 출력한다.\n\n"
+        f"아래 기사 목록에서 최대 3개를 골라 아래 형식으로만 출력하라.\n"
+        f"조건과 맞지 않아도 목록에 있는 기사 중 가장 적합한 것을 반드시 선택한다. 거절·설명·분석 없이 제목과 링크만 출력한다.\n\n"
         f"형식:\n"
         f"1. [제목]\n[링크]\n\n"
         f"2. [제목]\n[링크]\n\n"
