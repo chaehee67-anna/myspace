@@ -133,7 +133,7 @@ def call_claude(system_prompt: str, slot: int) -> str:
     raw = "\n".join(result_parts).strip()
 
     # 마크다운 특수문자 제거 (텔레그램 plain text 전송용)
-    clean = re.sub(r'[*_`#]', '', raw)
+    clean = re.sub(r'[*_`#\[\]()~>+=|{}.!-]', '', raw)
     return clean
 
 
