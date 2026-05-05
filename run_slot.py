@@ -111,6 +111,7 @@ def call_claude(system_prompt: str, slot: int) -> str:
         f"오늘 날짜: {today} KST\n"
         f"현재 슬롯: {SLOT_LABEL[slot]}\n\n"
         f"위 지침에 따라 web_search 툴을 사용해 실시간 리서치를 진행하고, "
+        f"소재를 채택한 뒤 게시글까지 바로 작성해줘.\n"
         f"소재 팩트 + 출처 링크 형태로만 결과를 전달해줘."
     )
 
