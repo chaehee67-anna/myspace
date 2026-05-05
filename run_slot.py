@@ -50,6 +50,15 @@ RSS_FEEDS = {
     "it":       "https://news.naver.com/main/rss/listRss.naver?sectionId=105",
 }
 
+# Naver 차단 시 폴백 (Google News - 해외 IP 항상 접근 가능)
+RSS_FALLBACK = {
+    "politics": "https://news.google.com/rss/search?q=한국+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "economy":  "https://news.google.com/rss/search?q=한국+경제&hl=ko&gl=KR&ceid=KR:ko",
+    "society":  "https://news.google.com/rss/search?q=한국+사회&hl=ko&gl=KR&ceid=KR:ko",
+    "world":    "https://news.google.com/rss/search?q=한국+국제&hl=ko&gl=KR&ceid=KR:ko",
+    "it":       "https://news.google.com/rss/search?q=한국+IT+기술&hl=ko&gl=KR&ceid=KR:ko",
+}
+
 SLOT_RSS_MAP = {
     1: ["politics", "society"],
     2: ["politics", "economy"],
@@ -104,30 +113,45 @@ def add_to_history(data, new_items):
     return data
 
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+    "Accept-Language": "ko-KR,ko;q=0.9",
+}
+
+
 def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
     feed_keys = SLOT_RSS_MAP[slot]
     articles = []
 
     for key in feed_keys:
-        url = RSS_FEEDS[key]
-        try:
-            feed = feedparser.parse(url)
-            for entry in feed.entries[:10]:
-                title = entry.get("title", "").strip()
-                link = entry.get("link", "").strip()
-                summary = re.sub(r"<[^>]+>", "", entry.get("summary", ""))[:200].strip()
-                if title and link:
-                    articles.append(f"제목: {title}\n요약: {summary}\n링크: {link}")
-        except Exception as e:
-            print(f"RSS 파싱 실패 ({key}): {e}")
+        urls = [(RSS_FEEDS[key], "Naver"), (RSS_FALLBACK[key], "Google")]
+        for url, source in urls:
+            try:
+                resp = requests.get(url, headers=HEADERS, timeout=10)
+                resp.raise_for_status()
+                feed = feedparser.parse(resp.text)
+                count = len(feed.entries)
+                print(f"RSS [{key}] {source}: {count}개 항목 수신")
+                if count == 0:
+                    continue
+                for entry in feed.entries[:10]:
+                    title = entry.get("title", "").strip()
+                    link = entry.get("link", "").strip()
+                    summary = re.sub(r"<[^>]+>", "", entry.get("summary", ""))[:200].strip()
+                    if title and link:
+                        articles.append(f"제목: {title}\n요약: {summary}\n링크: {link}")
+                break  # 성공하면 폴백 불필요
+            except Exception as e:
+                print(f"RSS 파싱 실패 [{key}] {source}: {e}")
 
     seen, unique = set(), []
     for a in articles:
-        key = a[:50]
-        if key not in seen:
-            seen.add(key)
+        k = a[:50]
+        if k not in seen:
+            seen.add(k)
             unique.append(a)
 
+    print(f"RSS 총 수집: {len(unique)}개 (중복 제거 후)")
     return "\n\n".join(unique[:max_articles])
 
 
