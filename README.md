@@ -1,4 +1,4 @@
-# @hee_lhm X 계정 운영 — Claude Code 슬롯 시스템
+# @hee_lhm 계정 운영 — Claude Code 슬롯 시스템
 
 ## 파일 구조
 ```
