@@ -72,7 +72,7 @@ SLOT_RSS_MAP = {
     2: ["politics", "economy"],
     3: ["politics", "community"],
     4: ["politics", "community"],
-    5: ["politics", "society"],
+    5: ["politics", "community"],
     6: ["youtube_politics", "youtube_media"],
 }
 
@@ -149,24 +149,33 @@ def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
                 print(f"RSS [{key}] {source}: {count}개 항목 수신")
                 if count == 0:
                     continue
-                filtered = 0
+                import calendar
+                batch = []
                 for entry in feed.entries[:20]:
                     title = entry.get("title", "").strip()
                     link = entry.get("link", "").strip()
                     if not title or not link:
                         continue
-                    # 날짜 필터링
                     pub = entry.get("published_parsed") or entry.get("updated_parsed")
                     if pub:
-                        import calendar
                         pub_dt = datetime.fromtimestamp(calendar.timegm(pub), tz=KST)
                         if pub_dt < cutoff:
                             continue
                     summary = re.sub(r"<[^>]+>", "", entry.get("summary", ""))[:200].strip()
-                    articles.append(f"제목: {title}\n요약: {summary}\n링크: {link}")
-                    filtered += 1
-                print(f"  → 날짜 필터 후: {filtered}개 ({max_hours}h 이내)")
-                if filtered > 0:
+                    batch.append(f"제목: {title}\n요약: {summary}\n링크: {link}")
+                # 날짜 필터 후 0건이면 필터 없이 재시도
+                if not batch:
+                    print(f"  → 날짜 필터 후 0건, 필터 없이 재수집")
+                    for entry in feed.entries[:10]:
+                        title = entry.get("title", "").strip()
+                        link = entry.get("link", "").strip()
+                        if not title or not link:
+                            continue
+                        summary = re.sub(r"<[^>]+>", "", entry.get("summary", ""))[:200].strip()
+                        batch.append(f"제목: {title}\n요약: {summary}\n링크: {link}")
+                print(f"  → 최종: {len(batch)}개")
+                articles.extend(batch)
+                if batch:
                     break
             except Exception as e:
                 print(f"RSS 파싱 실패 [{key}] {source}: {e}")
