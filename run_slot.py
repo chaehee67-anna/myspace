@@ -64,8 +64,8 @@ SLOT_RSS_MAP = {
     2: ["politics", "economy"],
     3: ["politics", "society"],
     4: ["politics", "society"],
-    5: ["society", "world", "it"],
-    6: ["society", "it"],
+    5: ["world", "it", "politics"],
+    6: ["society", "economy"],
 }
 
 
@@ -171,7 +171,8 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
         f"슬롯: {SLOT_LABEL[slot]}\n\n"
         f"아래 기사 목록에서 슬롯 조건에 가장 가까운 기사를 반드시 1개 선택해 X 게시글을 작성하라.\n"
         f"완벽한 조건의 기사가 없어도 목록 중 가장 적합한 기사로 작성한다. 거절하지 마라.\n"
-        f"출력 형식 (이것만 출력):\n[게시글 본문]\n\n출처: [URL]\n\n"
+        f"주의: 분석·설명·이유 없이 아래 형식만 출력하라.\n\n"
+        f"[게시글 본문]\n\n출처: [URL]\n\n"
         f"--- 기사 목록 ---\n{articles}"
     )
 
