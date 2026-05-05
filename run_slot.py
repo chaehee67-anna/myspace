@@ -27,8 +27,8 @@ RETENTION_DAYS = 3
 SLOT_SKILL_MAP = {
     1: "slot1.md",
     2: "slot2.md",
-    3: "slot3-4.md",
-    4: "slot3-4.md",
+    3: "slot3.md",
+    4: "slot4.md",
     5: "slot5-6.md",
     6: "slot5-6.md",
 }
@@ -55,9 +55,9 @@ RSS_FEEDS = {
 
 # Naver 차단 시 폴백 (Google News - 해외 IP 항상 접근 가능)
 RSS_FALLBACK = {
-    "politics":         "https://news.google.com/rss/search?q=한국+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "politics":         "https://news.google.com/rss/search?q=한국+정치+누리꾼+OR+커뮤니티+반응&hl=ko&gl=KR&ceid=KR:ko",
     "economy":          "https://news.google.com/rss/search?q=한국+경제&hl=ko&gl=KR&ceid=KR:ko",
-    "society":          "https://news.google.com/rss/search?q=한국+사회&hl=ko&gl=KR&ceid=KR:ko",
+    "society":          "https://news.google.com/rss/search?q=한국+사회+누리꾼+OR+커뮤니티+반응&hl=ko&gl=KR&ceid=KR:ko",
     "world":            "https://news.google.com/rss/search?q=한국+국제&hl=ko&gl=KR&ceid=KR:ko",
     "it":               "https://news.google.com/rss/search?q=한국+IT+기술&hl=ko&gl=KR&ceid=KR:ko",
     "youtube_politics": "https://news.google.com/rss/search?q=매불쇼+OR+뉴스하이킥+OR+뉴스타파&hl=ko&gl=KR&ceid=KR:ko",
