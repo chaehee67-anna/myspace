@@ -27,8 +27,8 @@ RETENTION_DAYS = 3
 SLOT_SKILL_MAP = {
     1: "slot1.md",
     2: "slot2.md",
-    3: "slot3-4.md",
-    4: "slot3-4.md",
+    3: "slot3.md",
+    4: "slot4.md",
     5: "slot5-6.md",
     6: "slot5-6.md",
 }
@@ -38,25 +38,55 @@ SLOT_LABEL = {
     2: "SLOT 2 - 정부브리핑 (09:30)",
     3: "SLOT 3 - 커뮤니티 (12:00)",
     4: "SLOT 4 - 커뮤니티 심화 (15:00)",
-    5: "SLOT 5 - 유튜브+비주류 (17:30)",
-    6: "SLOT 6 - 유튜브 클립 (19:00)",
+    5: "SLOT 5 - 뉴스속보+커뮤니티 (17:30)",
+    6: "SLOT 6 - 유튜브 리서치 (19:00)",
 }
 
 RSS_FEEDS = {
+    # Naver 섹션
     "politics": "https://news.naver.com/main/rss/listRss.naver?sectionId=100",
     "economy":  "https://news.naver.com/main/rss/listRss.naver?sectionId=101",
-    "society":  "https://news.naver.com/main/rss/listRss.naver?sectionId=102",
-    "world":    "https://news.naver.com/main/rss/listRss.naver?sectionId=104",
-    "it":       "https://news.naver.com/main/rss/listRss.naver?sectionId=105",
+    # 진보 미디어 직접
+    "ohmynews":   "https://www.ohmynews.com/NWS_Web/Rss/rss.aspx",
+    "hani":       "https://www.hani.co.kr/rss/politics/",
+    "kyunghyang": "https://www.khan.co.kr/rss/rssdata/politic_news.xml",
+    "newstapa":   "https://newstapa.org/feed",
+    "pressian":   "https://www.pressian.com/rss",
+    # 방송사 RSS
+    "mbc":  "https://imnews.imbc.com/rss/news/news_00.xml",
+    "ytn":  "https://www.ytn.co.kr/_ln/rss/0101.xml",
+    "jtbc": "https://news.jtbc.co.kr/rss/politics.xml",
+    # 커뮤니티 반응 정치 뉴스
+    "community": "https://news.google.com/rss/search?q=이재명+OR+윤석열+OR+국힘+OR+민주당+누리꾼+OR+커뮤니티+OR+반응&hl=ko&gl=KR&ceid=KR:ko",
+    # 슬롯6 전용: 유튜브 채널 언급 뉴스
+    "youtube_politics": "https://news.google.com/rss/search?q=매불쇼+OR+뉴스하이킥+OR+뉴스타파+OR+장르만여의도+OR+시방쇼&hl=ko&gl=KR&ceid=KR:ko",
+    "youtube_media":    "https://news.google.com/rss/search?q=MBC뉴스+유튜브+OR+JTBC+유튜브+OR+시사IN+유튜브&hl=ko&gl=KR&ceid=KR:ko",
+}
+
+# 접근 실패 시 폴백 (Google News - 해외 IP 항상 접근 가능)
+RSS_FALLBACK = {
+    "politics":   "https://news.google.com/rss/search?q=한국+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "economy":    "https://news.google.com/rss/search?q=한국+경제&hl=ko&gl=KR&ceid=KR:ko",
+    "ohmynews":   "https://news.google.com/rss/search?q=오마이뉴스+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "hani":       "https://news.google.com/rss/search?q=한겨레+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "kyunghyang": "https://news.google.com/rss/search?q=경향신문+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "newstapa":   "https://news.google.com/rss/search?q=뉴스타파&hl=ko&gl=KR&ceid=KR:ko",
+    "pressian":   "https://news.google.com/rss/search?q=프레시안+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "mbc":        "https://news.google.com/rss/search?q=MBC+뉴스+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "ytn":        "https://news.google.com/rss/search?q=YTN+속보+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "jtbc":       "https://news.google.com/rss/search?q=JTBC+뉴스+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "community":        "https://news.google.com/rss/search?q=이재명+OR+윤석열+OR+국힘+누리꾼+OR+커뮤니티&hl=ko&gl=KR&ceid=KR:ko",
+    "youtube_politics": "https://news.google.com/rss/search?q=매불쇼+OR+뉴스하이킥+OR+뉴스타파&hl=ko&gl=KR&ceid=KR:ko",
+    "youtube_media":    "https://news.google.com/rss/search?q=유튜브+정치+클립+화제&hl=ko&gl=KR&ceid=KR:ko",
 }
 
 SLOT_RSS_MAP = {
-    1: ["politics", "society"],
-    2: ["politics", "economy"],
-    3: ["politics", "society"],
-    4: ["politics", "society"],
-    5: ["society", "world", "it"],
-    6: ["society", "it"],
+    1: ["ohmynews", "hani", "mbc", "ytn"],               # 조간: 진보미디어 + 방송사
+    2: ["politics", "economy", "kyunghyang"],              # 정부브리핑: 정치경제 + 경향
+    3: ["community", "ohmynews", "pressian"],              # 커뮤니티: 반응 + 진보논평
+    4: ["community", "hani", "kyunghyang"],                # 커뮤니티심화: 반응 + 심층
+    5: ["ytn", "mbc", "jtbc", "community"],                # 속보+커뮤니티: 방송속보 + 반응
+    6: ["youtube_politics", "youtube_media", "newstapa"],  # 유튜브리서치
 }
 
 
@@ -104,30 +134,79 @@ def add_to_history(data, new_items):
     return data
 
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+    "Accept-Language": "ko-KR,ko;q=0.9",
+}
+
+
+SLOT_MAX_HOURS = {
+    1: 12, 2: 12, 3: 24, 4: 24, 5: 24, 6: 48,
+}
+
+
 def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
+    import calendar
     feed_keys = SLOT_RSS_MAP[slot]
-    articles = []
+    max_hours = SLOT_MAX_HOURS[slot]
+    now = datetime.now(KST)
+    cutoff = now - timedelta(hours=max_hours)
+    articles: list[tuple[datetime, str]] = []
 
     for key in feed_keys:
-        url = RSS_FEEDS[key]
-        try:
-            feed = feedparser.parse(url)
-            for entry in feed.entries[:10]:
-                title = entry.get("title", "").strip()
-                link = entry.get("link", "").strip()
-                summary = re.sub(r"<[^>]+>", "", entry.get("summary", ""))[:200].strip()
-                if title and link:
-                    articles.append(f"제목: {title}\n요약: {summary}\n링크: {link}")
-        except Exception as e:
-            print(f"RSS 파싱 실패 ({key}): {e}")
+        primary = RSS_FEEDS.get(key, "")
+        fallback = RSS_FALLBACK.get(key, "")
+        urls = [(u, label) for u, label in [(primary, "Primary"), (fallback, "Fallback")] if u]
+        for url, source in urls:
+            try:
+                resp = requests.get(url, headers=HEADERS, timeout=10)
+                resp.raise_for_status()
+                feed = feedparser.parse(resp.text)
+                count = len(feed.entries)
+                print(f"RSS [{key}] {source}: {count}개 항목 수신")
+                if count == 0:
+                    continue
+                batch: list[tuple[datetime, str]] = []
+                for entry in feed.entries[:20]:
+                    title = entry.get("title", "").strip()
+                    link = entry.get("link", "").strip()
+                    if not title or not link:
+                        continue
+                    pub = entry.get("published_parsed") or entry.get("updated_parsed")
+                    pub_dt = datetime.fromtimestamp(calendar.timegm(pub), tz=KST) if pub else now
+                    if pub_dt < cutoff:
+                        continue
+                    summary = re.sub(r"<[^>]+>", "", entry.get("summary", ""))[:200].strip()
+                    batch.append((pub_dt, f"제목: {title}\n요약: {summary}\n링크: {link}"))
+                # 날짜 필터 후 0건이면 필터 없이 재시도
+                if not batch:
+                    print(f"  → 날짜 필터 후 0건, 필터 없이 재수집")
+                    for entry in feed.entries[:10]:
+                        title = entry.get("title", "").strip()
+                        link = entry.get("link", "").strip()
+                        if not title or not link:
+                            continue
+                        pub = entry.get("published_parsed") or entry.get("updated_parsed")
+                        pub_dt = datetime.fromtimestamp(calendar.timegm(pub), tz=KST) if pub else now
+                        summary = re.sub(r"<[^>]+>", "", entry.get("summary", ""))[:200].strip()
+                        batch.append((pub_dt, f"제목: {title}\n요약: {summary}\n링크: {link}"))
+                print(f"  → 최종: {len(batch)}개")
+                articles.extend(batch)
+                if batch:
+                    break
+            except Exception as e:
+                print(f"RSS 파싱 실패 [{key}] {source}: {e}")
 
+    # 최신순 정렬 후 중복 제거
+    articles.sort(key=lambda x: x[0], reverse=True)
     seen, unique = set(), []
-    for a in articles:
-        key = a[:50]
-        if key not in seen:
-            seen.add(key)
-            unique.append(a)
+    for _, text in articles:
+        k = text[:50]
+        if k not in seen:
+            seen.add(k)
+            unique.append(text)
 
+    print(f"RSS 총 수집: {len(unique)}개 (중복 제거, 최신순 정렬 후)")
     return "\n\n".join(unique[:max_articles])
 
 
@@ -145,8 +224,12 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
     user_message = (
         f"오늘: {today} KST\n"
         f"슬롯: {SLOT_LABEL[slot]}\n\n"
-        f"아래 기사 목록에서 슬롯 조건에 맞는 기사를 선택해 X 게시글 본문과 출처 URL만 출력하라.\n"
-        f"형식:\n[게시글 본문]\n\n출처: [URL]\n\n"
+        f"아래 기사 목록에서 최대 3개를 골라 아래 형식으로만 출력하라.\n"
+        f"조건과 맞지 않아도 목록에 있는 기사 중 가장 적합한 것을 반드시 선택한다. 거절·설명·분석 없이 제목과 링크만 출력한다.\n\n"
+        f"형식:\n"
+        f"1. [제목]\n[링크]\n\n"
+        f"2. [제목]\n[링크]\n\n"
+        f"3. [제목]\n[링크]\n\n"
         f"--- 기사 목록 ---\n{articles}"
     )
 
@@ -171,6 +254,19 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
     clean = re.sub(r"[*_`\[\]()~>+=|{}!]", "", raw)
     clean = re.sub(r"(?<!\w)#", "", clean)
     return clean
+
+
+def _send_debug(msg: str, slot: int):
+    try:
+        bot_token = os.environ["TELEGRAM_BOT_TOKEN"]
+        chat_id = os.environ["TELEGRAM_CHAT_ID"]
+        requests.post(
+            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+            json={"chat_id": chat_id, "text": f"🔧 DEBUG SLOT {slot}\n\n{msg}"},
+            timeout=10,
+        )
+    except Exception:
+        pass
 
 
 def send_telegram(text: str, slot: int):
@@ -211,9 +307,9 @@ NO_CONTENT_MARKERS = [
 
 
 def is_valid_result(text: str) -> bool:
-    if len(text) < 30:
+    if len(text) < 20:
         return False
-    if "출처:" not in text and "http" not in text:
+    if "http" not in text:
         return False
     if any(m in text for m in NO_CONTENT_MARKERS):
         return False
@@ -239,7 +335,7 @@ def main():
     print(f"수집된 기사: {article_count}개")
 
     if not articles:
-        print("RSS 기사 없음 — 종료")
+        _send_debug(f"[SLOT {slot}] RSS 기사 0건 — 수집 실패", slot)
         sys.exit(0)
 
     system_prompt = build_system_prompt(slot, blacklist)
@@ -251,6 +347,13 @@ def main():
     print(result[:200] + "..." if len(result) > 200 else result)
 
     if not is_valid_result(result):
+        _send_debug(
+            f"[SLOT {slot}] is_valid_result 실패\n"
+            f"길이: {len(result)}자\n"
+            f"출처 포함: {'출처:' in result or 'http' in result}\n"
+            f"Claude 출력:\n{result[:300]}",
+            slot,
+        )
         print("유효한 소재 없음 — 텔레그램 전송 건너뜀")
         print(f"=== SLOT {slot} 완료 (전송 없음) ===")
         sys.exit(0)
