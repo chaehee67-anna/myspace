@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-run_slot.py — 슬롯 실행 메인 스크립트
+run_slot.py - 슬롯 실행 메인 스크립트
 GitHub Actions에서 호출됨
 """
 
@@ -9,6 +9,7 @@ import json
 import os
 import re
 import sys
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -22,8 +23,6 @@ SKILLS_DIR = BASE_DIR / "skills"
 HISTORY_FILE = BASE_DIR / "history" / "history.json"
 RETENTION_DAYS = 3
 
-
-# ── 슬롯별 스킬 파일 매핑 ──────────────────────────────────────
 SLOT_SKILL_MAP = {
     1: "slot1.md",
     2: "slot2.md",
@@ -43,7 +42,6 @@ SLOT_LABEL = {
 }
 
 
-# ── 이력 관리 ───────────────────────────────────────────────────
 def load_history():
     if not HISTORY_FILE.exists():
         return {"version": "1.0", "retention_days": RETENTION_DAYS, "entries": []}
@@ -88,26 +86,22 @@ def add_to_history(data, new_items):
     return data
 
 
-# ── 시스템 프롬프트 조립 ─────────────────────────────────────────
 def build_system_prompt(slot: int, blacklist: list) -> str:
     core = (SKILLS_DIR / "core.md").read_text(encoding="utf-8")
     slot_skill = (SKILLS_DIR / SLOT_SKILL_MAP[slot]).read_text(encoding="utf-8")
-
     blacklist_section = "## 금일 소재 블랙리스트 (재제안 금지)\n"
     if blacklist:
         blacklist_section += "\n".join(f"- {item}" for item in blacklist)
     else:
         blacklist_section += "- (없음)"
-
     return f"{core}\n\n---\n\n{slot_skill}\n\n---\n\n{blacklist_section}"
 
 
-# ── Anthropic API 호출 (web_search 툴 포함) ─────────────────────
 def call_claude(system_prompt: str, slot: int) -> str:
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     today = today_kst()
 
-   user_message = (
+    user_message = (
         f"오늘 날짜: {today} KST\n"
         f"슬롯: {SLOT_LABEL[slot]}\n\n"
         f"web_search로 리서치 후 아래 형식으로만 출력해줘. 다른 설명 없이.\n\n"
@@ -118,40 +112,41 @@ def call_claude(system_prompt: str, slot: int) -> str:
         f"주의: 날짜는 기사 실제 날짜만. 추측 금지."
     )
 
-    # web_search 툴 활성화 (Sonnet 이상에서만 지원)
     tools = [{"type": "web_search_20250305", "name": "web_search"}]
 
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=800,
-        system=system_prompt,
-        tools=tools,
-        messages=[{"role": "user", "content": user_message}],
-    )
+    for attempt in range(3):
+        try:
+            message = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=800,
+                system=system_prompt,
+                tools=tools,
+                messages=[{"role": "user", "content": user_message}],
+            )
+            break
+        except anthropic.RateLimitError:
+            if attempt < 2:
+                print(f"Rate limit 초과. 60초 후 재시도 ({attempt+1}/3)...")
+                time.sleep(60)
+            else:
+                raise
 
-    # 텍스트 블록만 추출 (tool_use / tool_result 블록 제외)
     result_parts = [
         block.text for block in message.content
         if hasattr(block, "text")
     ]
     raw = "\n".join(result_parts).strip()
-
-    # 마크다운 특수문자 제거 (텔레그램 plain text 전송용)
     clean = re.sub(r'[*_`#\[\]()~>+=|{}!]', '', raw)
     return clean
 
 
-# ── 텔레그램 발송 ───────────────────────────────────────────────
 def send_telegram(text: str, slot: int):
     bot_token = os.environ["TELEGRAM_BOT_TOKEN"]
     chat_id = os.environ["TELEGRAM_CHAT_ID"]
-    label = SLOT_LABEL[slot]
     today = today_kst()
 
-    # plain text 전송 (parse_mode 없음)
-    full_message = f"📋 {label}\n🗓 {today}\n\n{text}"
+    full_message = f"📋 {SLOT_LABEL[slot]}\n🗓 {today}\n\n{text}"
 
-    # 텔레그램 메시지 최대 4096자 제한
     if len(full_message) > 4096:
         full_message = full_message[:4090] + "\n..."
 
@@ -170,11 +165,10 @@ def send_telegram(text: str, slot: int):
     print(f"텔레그램 발송 완료 → chat_id: {chat_id}")
 
 
-# ── 결과에서 소재 키워드 추출 (이력 등록용) ──────────────────────
 def extract_keywords(result_text: str) -> list:
     keywords = []
     for line in result_text.split("\n"):
-        line = line.strip().lstrip("-•*").strip()
+        line = line.strip().lstrip("-").strip()
         if len(line) > 4 and not line.startswith("http"):
             keyword = line[:20].replace(" ", "")
             if keyword:
@@ -184,7 +178,6 @@ def extract_keywords(result_text: str) -> list:
     return keywords
 
 
-# ── 메인 ────────────────────────────────────────────────────────
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--slot", type=int, required=True, choices=range(1, 7))
@@ -193,28 +186,21 @@ def main():
 
     print(f"=== {SLOT_LABEL[slot]} 실행 시작 ===")
 
-    # 이력 로드 + 만료 정리
     history_data = load_history()
     history_data = clean_expired(history_data)
     blacklist = get_blacklist(history_data)
-    print(f"블랙리스트 항목: {len(blacklist)}개")
+    print(f"블랙리스트: {len(blacklist)}개")
 
-    # 시스템 프롬프트 조립
     system_prompt = build_system_prompt(slot, blacklist)
-    print(f"시스템 프롬프트: {len(system_prompt)}자")
+    print(f"프롬프트: {len(system_prompt)}자")
 
-    # Claude API 호출
     print("Claude API 호출 중...")
     result = call_claude(system_prompt, slot)
-    print(f"결과 수신 완료 ({len(result)}자)")
-    print("\n--- 결과 미리보기 ---")
-    print(result[:300] + "..." if len(result) > 300 else result)
-    print("---\n")
+    print(f"결과: {len(result)}자")
+    print(result[:200] + "..." if len(result) > 200 else result)
 
-    # 텔레그램 발송
     send_telegram(result, slot)
 
-    # 이력 업데이트
     keywords = extract_keywords(result)
     if keywords:
         history_data = add_to_history(history_data, keywords)
