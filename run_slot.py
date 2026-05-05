@@ -43,37 +43,50 @@ SLOT_LABEL = {
 }
 
 RSS_FEEDS = {
+    # Naver 섹션
     "politics": "https://news.naver.com/main/rss/listRss.naver?sectionId=100",
     "economy":  "https://news.naver.com/main/rss/listRss.naver?sectionId=101",
-    "society":  "https://news.naver.com/main/rss/listRss.naver?sectionId=102",
-    "world":    "https://news.naver.com/main/rss/listRss.naver?sectionId=104",
-    "it":       "https://news.naver.com/main/rss/listRss.naver?sectionId=105",
-    # 슬롯3·4 전용: 커뮤니티 반응 정치 뉴스
+    # 진보 미디어 직접
+    "ohmynews":   "https://www.ohmynews.com/NWS_Web/Rss/rss.aspx",
+    "hani":       "https://www.hani.co.kr/rss/politics/",
+    "kyunghyang": "https://www.khan.co.kr/rss/rssdata/politic_news.xml",
+    "newstapa":   "https://newstapa.org/feed",
+    "pressian":   "https://www.pressian.com/rss",
+    # 방송사 RSS
+    "mbc":  "https://imnews.imbc.com/rss/news/news_00.xml",
+    "ytn":  "https://www.ytn.co.kr/_ln/rss/0101.xml",
+    "jtbc": "https://news.jtbc.co.kr/rss/politics.xml",
+    # 커뮤니티 반응 정치 뉴스
     "community": "https://news.google.com/rss/search?q=이재명+OR+윤석열+OR+국힘+OR+민주당+누리꾼+OR+커뮤니티+OR+반응&hl=ko&gl=KR&ceid=KR:ko",
     # 슬롯6 전용: 유튜브 채널 언급 뉴스
     "youtube_politics": "https://news.google.com/rss/search?q=매불쇼+OR+뉴스하이킥+OR+뉴스타파+OR+장르만여의도+OR+시방쇼&hl=ko&gl=KR&ceid=KR:ko",
     "youtube_media":    "https://news.google.com/rss/search?q=MBC뉴스+유튜브+OR+JTBC+유튜브+OR+시사IN+유튜브&hl=ko&gl=KR&ceid=KR:ko",
 }
 
-# Naver 차단 시 폴백 (Google News - 해외 IP 항상 접근 가능)
+# 접근 실패 시 폴백 (Google News - 해외 IP 항상 접근 가능)
 RSS_FALLBACK = {
-    "politics":         "https://news.google.com/rss/search?q=한국+정치+누리꾼+OR+커뮤니티+반응&hl=ko&gl=KR&ceid=KR:ko",
-    "economy":          "https://news.google.com/rss/search?q=한국+경제&hl=ko&gl=KR&ceid=KR:ko",
-    "society":          "https://news.google.com/rss/search?q=한국+사회+누리꾼+OR+커뮤니티+반응&hl=ko&gl=KR&ceid=KR:ko",
-    "world":            "https://news.google.com/rss/search?q=한국+국제&hl=ko&gl=KR&ceid=KR:ko",
-    "it":               "https://news.google.com/rss/search?q=한국+IT+기술&hl=ko&gl=KR&ceid=KR:ko",
+    "politics":   "https://news.google.com/rss/search?q=한국+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "economy":    "https://news.google.com/rss/search?q=한국+경제&hl=ko&gl=KR&ceid=KR:ko",
+    "ohmynews":   "https://news.google.com/rss/search?q=오마이뉴스+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "hani":       "https://news.google.com/rss/search?q=한겨레+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "kyunghyang": "https://news.google.com/rss/search?q=경향신문+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "newstapa":   "https://news.google.com/rss/search?q=뉴스타파&hl=ko&gl=KR&ceid=KR:ko",
+    "pressian":   "https://news.google.com/rss/search?q=프레시안+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "mbc":        "https://news.google.com/rss/search?q=MBC+뉴스+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "ytn":        "https://news.google.com/rss/search?q=YTN+속보+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "jtbc":       "https://news.google.com/rss/search?q=JTBC+뉴스+정치&hl=ko&gl=KR&ceid=KR:ko",
     "community":        "https://news.google.com/rss/search?q=이재명+OR+윤석열+OR+국힘+누리꾼+OR+커뮤니티&hl=ko&gl=KR&ceid=KR:ko",
     "youtube_politics": "https://news.google.com/rss/search?q=매불쇼+OR+뉴스하이킥+OR+뉴스타파&hl=ko&gl=KR&ceid=KR:ko",
     "youtube_media":    "https://news.google.com/rss/search?q=유튜브+정치+클립+화제&hl=ko&gl=KR&ceid=KR:ko",
 }
 
 SLOT_RSS_MAP = {
-    1: ["politics", "society"],
-    2: ["politics", "economy"],
-    3: ["politics", "community"],
-    4: ["politics", "community"],
-    5: ["politics", "community"],
-    6: ["youtube_politics", "youtube_media"],
+    1: ["ohmynews", "hani", "mbc", "ytn"],               # 조간: 진보미디어 + 방송사
+    2: ["politics", "economy", "kyunghyang"],              # 정부브리핑: 정치경제 + 경향
+    3: ["community", "ohmynews", "pressian"],              # 커뮤니티: 반응 + 진보논평
+    4: ["community", "hani", "kyunghyang"],                # 커뮤니티심화: 반응 + 심층
+    5: ["ytn", "mbc", "jtbc", "community"],                # 속보+커뮤니티: 방송속보 + 반응
+    6: ["youtube_politics", "youtube_media", "newstapa"],  # 유튜브리서치
 }
 
 
@@ -133,13 +146,18 @@ SLOT_MAX_HOURS = {
 
 
 def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
+    import calendar
     feed_keys = SLOT_RSS_MAP[slot]
     max_hours = SLOT_MAX_HOURS[slot]
-    cutoff = datetime.now(KST) - timedelta(hours=max_hours)
-    articles = []
+    now = datetime.now(KST)
+    cutoff = now - timedelta(hours=max_hours)
+    wide_cutoff = now - timedelta(days=7)  # 폴백 재수집 시 최대 허용 범위
+    articles: list[tuple[datetime, str]] = []
 
     for key in feed_keys:
-        urls = [(RSS_FEEDS[key], "Naver"), (RSS_FALLBACK[key], "Google")]
+        primary = RSS_FEEDS.get(key, "")
+        fallback = RSS_FALLBACK.get(key, "")
+        urls = [(u, label) for u, label in [(primary, "Primary"), (fallback, "Fallback")] if u]
         for url, source in urls:
             try:
                 resp = requests.get(url, headers=HEADERS, timeout=10)
@@ -149,30 +167,36 @@ def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
                 print(f"RSS [{key}] {source}: {count}개 항목 수신")
                 if count == 0:
                     continue
-                import calendar
-                batch = []
+                batch: list[tuple[datetime, str]] = []
                 for entry in feed.entries[:20]:
                     title = entry.get("title", "").strip()
                     link = entry.get("link", "").strip()
                     if not title or not link:
                         continue
                     pub = entry.get("published_parsed") or entry.get("updated_parsed")
-                    if pub:
-                        pub_dt = datetime.fromtimestamp(calendar.timegm(pub), tz=KST)
-                        if pub_dt < cutoff:
-                            continue
+                    if not pub:
+                        continue  # 발행일 없는 항목 제외
+                    pub_dt = datetime.fromtimestamp(calendar.timegm(pub), tz=KST)
+                    if pub_dt < cutoff:
+                        continue
                     summary = re.sub(r"<[^>]+>", "", entry.get("summary", ""))[:200].strip()
-                    batch.append(f"제목: {title}\n요약: {summary}\n링크: {link}")
-                # 날짜 필터 후 0건이면 필터 없이 재시도
+                    batch.append((pub_dt, f"제목: {title}\n요약: {summary}\n링크: {link}"))
+                # 날짜 필터 후 0건이면 7일 이내로 완화해서 재시도
                 if not batch:
-                    print(f"  → 날짜 필터 후 0건, 필터 없이 재수집")
+                    print(f"  → 날짜 필터 후 0건, 7일 이내로 완화 재수집")
                     for entry in feed.entries[:10]:
                         title = entry.get("title", "").strip()
                         link = entry.get("link", "").strip()
                         if not title or not link:
                             continue
+                        pub = entry.get("published_parsed") or entry.get("updated_parsed")
+                        if not pub:
+                            continue
+                        pub_dt = datetime.fromtimestamp(calendar.timegm(pub), tz=KST)
+                        if pub_dt < wide_cutoff:
+                            continue
                         summary = re.sub(r"<[^>]+>", "", entry.get("summary", ""))[:200].strip()
-                        batch.append(f"제목: {title}\n요약: {summary}\n링크: {link}")
+                        batch.append((pub_dt, f"제목: {title}\n요약: {summary}\n링크: {link}"))
                 print(f"  → 최종: {len(batch)}개")
                 articles.extend(batch)
                 if batch:
@@ -180,14 +204,16 @@ def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
             except Exception as e:
                 print(f"RSS 파싱 실패 [{key}] {source}: {e}")
 
+    # 최신순 정렬 후 중복 제거
+    articles.sort(key=lambda x: x[0], reverse=True)
     seen, unique = set(), []
-    for a in articles:
-        k = a[:50]
+    for _, text in articles:
+        k = text[:50]
         if k not in seen:
             seen.add(k)
-            unique.append(a)
+            unique.append(text)
 
-    print(f"RSS 총 수집: {len(unique)}개 (중복 제거 후)")
+    print(f"RSS 총 수집: {len(unique)}개 (중복 제거, 최신순 정렬 후)")
     return "\n\n".join(unique[:max_articles])
 
 
