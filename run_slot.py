@@ -38,8 +38,8 @@ SLOT_LABEL = {
     2: "SLOT 2 - 정부브리핑 (09:30)",
     3: "SLOT 3 - 커뮤니티 (12:00)",
     4: "SLOT 4 - 커뮤니티 심화 (15:00)",
-    5: "SLOT 5 - 유튜브+비주류 (17:30)",
-    6: "SLOT 6 - 유튜브 클립 (19:00)",
+    5: "SLOT 5 - 뉴스속보+커뮤니티 (17:30)",
+    6: "SLOT 6 - 유튜브 리서치 (19:00)",
 }
 
 RSS_FEEDS = {
@@ -48,15 +48,20 @@ RSS_FEEDS = {
     "society":  "https://news.naver.com/main/rss/listRss.naver?sectionId=102",
     "world":    "https://news.naver.com/main/rss/listRss.naver?sectionId=104",
     "it":       "https://news.naver.com/main/rss/listRss.naver?sectionId=105",
+    # 슬롯6 전용: 유튜브 채널 언급 뉴스 (Google News 검색)
+    "youtube_politics": "https://news.google.com/rss/search?q=매불쇼+OR+뉴스하이킥+OR+뉴스타파+OR+장르만여의도+OR+시방쇼&hl=ko&gl=KR&ceid=KR:ko",
+    "youtube_media":    "https://news.google.com/rss/search?q=MBC뉴스+유튜브+OR+JTBC+유튜브+OR+시사IN+유튜브&hl=ko&gl=KR&ceid=KR:ko",
 }
 
 # Naver 차단 시 폴백 (Google News - 해외 IP 항상 접근 가능)
 RSS_FALLBACK = {
-    "politics": "https://news.google.com/rss/search?q=한국+정치&hl=ko&gl=KR&ceid=KR:ko",
-    "economy":  "https://news.google.com/rss/search?q=한국+경제&hl=ko&gl=KR&ceid=KR:ko",
-    "society":  "https://news.google.com/rss/search?q=한국+사회&hl=ko&gl=KR&ceid=KR:ko",
-    "world":    "https://news.google.com/rss/search?q=한국+국제&hl=ko&gl=KR&ceid=KR:ko",
-    "it":       "https://news.google.com/rss/search?q=한국+IT+기술&hl=ko&gl=KR&ceid=KR:ko",
+    "politics":         "https://news.google.com/rss/search?q=한국+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "economy":          "https://news.google.com/rss/search?q=한국+경제&hl=ko&gl=KR&ceid=KR:ko",
+    "society":          "https://news.google.com/rss/search?q=한국+사회&hl=ko&gl=KR&ceid=KR:ko",
+    "world":            "https://news.google.com/rss/search?q=한국+국제&hl=ko&gl=KR&ceid=KR:ko",
+    "it":               "https://news.google.com/rss/search?q=한국+IT+기술&hl=ko&gl=KR&ceid=KR:ko",
+    "youtube_politics": "https://news.google.com/rss/search?q=매불쇼+OR+뉴스하이킥+OR+뉴스타파&hl=ko&gl=KR&ceid=KR:ko",
+    "youtube_media":    "https://news.google.com/rss/search?q=유튜브+정치+클립+화제&hl=ko&gl=KR&ceid=KR:ko",
 }
 
 SLOT_RSS_MAP = {
@@ -64,8 +69,8 @@ SLOT_RSS_MAP = {
     2: ["politics", "economy"],
     3: ["politics", "society"],
     4: ["politics", "society"],
-    5: ["world", "it", "politics"],
-    6: ["society", "economy"],
+    5: ["politics", "society"],
+    6: ["youtube_politics", "youtube_media"],
 }
 
 
