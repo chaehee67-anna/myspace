@@ -30,7 +30,7 @@ jobs:
           python-version: '3.11'
 
       - name: 의존성 설치
-        run: pip install anthropic requests pytz
+        run: pip install anthropic requests pytz feedparser
 
       - name: 슬롯 번호 결정
         id: slot

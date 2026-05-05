@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import anthropic
+import feedparser
 import pytz
 import requests
 
@@ -39,6 +40,23 @@ SLOT_LABEL = {
     4: "SLOT 4 - 커뮤니티 심화 (15:00)",
     5: "SLOT 5 - 유튜브+비주류 (17:30)",
     6: "SLOT 6 - 유튜브 클립 (19:00)",
+}
+
+RSS_FEEDS = {
+    "politics": "https://news.naver.com/main/rss/listRss.naver?sectionId=100",
+    "economy":  "https://news.naver.com/main/rss/listRss.naver?sectionId=101",
+    "society":  "https://news.naver.com/main/rss/listRss.naver?sectionId=102",
+    "world":    "https://news.naver.com/main/rss/listRss.naver?sectionId=104",
+    "it":       "https://news.naver.com/main/rss/listRss.naver?sectionId=105",
+}
+
+SLOT_RSS_MAP = {
+    1: ["politics", "society"],
+    2: ["politics", "economy"],
+    3: ["politics", "society"],
+    4: ["politics", "society"],
+    5: ["society", "world", "it"],
+    6: ["society", "it"],
 }
 
 
@@ -86,26 +104,51 @@ def add_to_history(data, new_items):
     return data
 
 
+def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
+    feed_keys = SLOT_RSS_MAP[slot]
+    articles = []
+
+    for key in feed_keys:
+        url = RSS_FEEDS[key]
+        try:
+            feed = feedparser.parse(url)
+            for entry in feed.entries[:10]:
+                title = entry.get("title", "").strip()
+                link = entry.get("link", "").strip()
+                summary = re.sub(r"<[^>]+>", "", entry.get("summary", ""))[:200].strip()
+                if title and link:
+                    articles.append(f"제목: {title}\n요약: {summary}\n링크: {link}")
+        except Exception as e:
+            print(f"RSS 파싱 실패 ({key}): {e}")
+
+    seen, unique = set(), []
+    for a in articles:
+        key = a[:50]
+        if key not in seen:
+            seen.add(key)
+            unique.append(a)
+
+    return "\n\n".join(unique[:max_articles])
+
+
 def build_system_prompt(slot: int, blacklist: list) -> str:
     core = (SKILLS_DIR / "core.md").read_text(encoding="utf-8")
     slot_skill = (SKILLS_DIR / SLOT_SKILL_MAP[slot]).read_text(encoding="utf-8")
     bl = ", ".join(blacklist) if blacklist else "없음"
-    blacklist_section = f"재제안 금지 소재: {bl}"
-    return f"{core}\n\n---\n\n{slot_skill}\n\n---\n\n{blacklist_section}"
+    return f"{core}\n\n---\n\n{slot_skill}\n\n---\n\n재제안 금지 소재: {bl}"
 
 
-def call_claude(system_prompt: str, slot: int) -> str:
+def call_claude(system_prompt: str, slot: int, articles: str) -> str:
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     today = today_kst()
 
     user_message = (
         f"오늘: {today} KST\n"
         f"슬롯: {SLOT_LABEL[slot]}\n\n"
-        f"web_search로 최신 기사 검색 후, X 게시글 본문과 출처 URL만 출력하라.\n"
-        f"형식:\n[게시글 본문]\n\n출처: [URL]"
+        f"아래 기사 목록에서 슬롯 조건에 맞는 기사를 선택해 X 게시글 본문과 출처 URL만 출력하라.\n"
+        f"형식:\n[게시글 본문]\n\n출처: [URL]\n\n"
+        f"--- 기사 목록 ---\n{articles}"
     )
-
-    tools = [{"type": "web_search_20250305", "name": "web_search"}]
 
     for attempt in range(3):
         try:
@@ -113,8 +156,6 @@ def call_claude(system_prompt: str, slot: int) -> str:
                 model="claude-haiku-4-5-20251001",
                 max_tokens=400,
                 system=system_prompt,
-                tools=tools,
-                tool_choice={"type": "tool", "name": "web_search"},
                 messages=[{"role": "user", "content": user_message}],
             )
             break
@@ -125,13 +166,10 @@ def call_claude(system_prompt: str, slot: int) -> str:
             else:
                 raise
 
-    result_parts = [
-        block.text for block in message.content
-        if hasattr(block, "text")
-    ]
+    result_parts = [block.text for block in message.content if hasattr(block, "text")]
     raw = "\n".join(result_parts).strip()
-    clean = re.sub(r'[*_`\[\]()~>+=|{}!]', '', raw)
-    clean = re.sub(r'(?<!\w)#', '', clean)
+    clean = re.sub(r"[*_`\[\]()~>+=|{}!]", "", raw)
+    clean = re.sub(r"(?<!\w)#", "", clean)
     return clean
 
 
@@ -141,22 +179,17 @@ def send_telegram(text: str, slot: int):
     today = today_kst()
 
     full_message = f"📋 {SLOT_LABEL[slot]}\n🗓 {today}\n\n{text}"
-
     if len(full_message) > 4096:
         full_message = full_message[:4090] + "\n..."
 
-    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": full_message,
-        "disable_web_page_preview": False,
-    }
-    resp = requests.post(url, json=payload, timeout=10)
-
+    resp = requests.post(
+        f"https://api.telegram.org/bot{bot_token}/sendMessage",
+        json={"chat_id": chat_id, "text": full_message, "disable_web_page_preview": False},
+        timeout=10,
+    )
     if resp.status_code != 200:
         print(f"텔레그램 발송 실패: {resp.status_code} {resp.text}", file=sys.stderr)
         sys.exit(1)
-
     print(f"텔레그램 발송 완료 → chat_id: {chat_id}")
 
 
@@ -165,9 +198,7 @@ def extract_keywords(result_text: str) -> list:
     for line in result_text.split("\n"):
         line = line.strip().lstrip("-").strip()
         if len(line) > 4 and not line.startswith("http"):
-            keyword = line[:20].replace(" ", "")
-            if keyword:
-                keywords.append(keyword)
+            keywords.append(line[:20].replace(" ", ""))
         if len(keywords) >= 5:
             break
     return keywords
@@ -184,8 +215,7 @@ def is_valid_result(text: str) -> bool:
         return False
     if "출처:" not in text and "http" not in text:
         return False
-    lower = text.lower()
-    if any(marker in lower for marker in NO_CONTENT_MARKERS):
+    if any(m in text for m in NO_CONTENT_MARKERS):
         return False
     return True
 
@@ -203,11 +233,20 @@ def main():
     blacklist = get_blacklist(history_data)
     print(f"블랙리스트: {len(blacklist)}개")
 
+    print("RSS 기사 수집 중...")
+    articles = fetch_rss_articles(slot)
+    article_count = articles.count("제목:")
+    print(f"수집된 기사: {article_count}개")
+
+    if not articles:
+        print("RSS 기사 없음 — 종료")
+        sys.exit(0)
+
     system_prompt = build_system_prompt(slot, blacklist)
     print(f"프롬프트: {len(system_prompt)}자")
 
-    print("Claude API 호출 중...")
-    result = call_claude(system_prompt, slot)
+    print("Claude API 호출 중 (포맷팅)...")
+    result = call_claude(system_prompt, slot, articles)
     print(f"결과: {len(result)}자")
     print(result[:200] + "..." if len(result) > 200 else result)
 
