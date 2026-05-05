@@ -118,7 +118,7 @@ def call_claude(system_prompt: str, slot: int) -> str:
     tools = [{"type": "web_search_20250305", "name": "web_search"}]
 
     message = client.messages.create(
-        model="claude-sonnet-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=2000,
         system=system_prompt,
         tools=tools,
