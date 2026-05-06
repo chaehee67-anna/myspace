@@ -232,11 +232,11 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
         f"오늘: {today} KST\n"
         f"슬롯: {SLOT_LABEL[slot]}\n\n"
         f"아래 기사 목록에서 최대 3개를 골라 아래 형식으로만 출력하라.\n"
-        f"조건과 맞지 않아도 목록에 있는 기사 중 가장 적합한 것을 반드시 선택한다. 거절·설명·분석 없이 제목과 링크만 출력한다.\n\n"
+        f"조건과 맞지 않아도 목록에 있는 기사 중 가장 적합한 것을 반드시 선택한다. 거절·설명·분석 없이 형식만 출력한다.\n\n"
         f"형식:\n"
-        f"1. [제목]\n[링크]\n\n"
-        f"2. [제목]\n[링크]\n\n"
-        f"3. [제목]\n[링크]\n\n"
+        f"1. [제목]\n[핵심 내용 1~2줄]\n[링크]\n\n"
+        f"2. [제목]\n[핵심 내용 1~2줄]\n[링크]\n\n"
+        f"3. [제목]\n[핵심 내용 1~2줄]\n[링크]\n\n"
         f"--- 기사 목록 ---\n{articles}"
     )
 
@@ -244,7 +244,7 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
         try:
             message = client.messages.create(
                 model="claude-haiku-4-5-20251001",
-                max_tokens=400,
+                max_tokens=600,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_message}],
             )
@@ -288,18 +288,29 @@ def send_telegram(text: str, slot: int):
     today = today_kst()
 
     full_message = f"📋 {SLOT_LABEL[slot]}\n🗓 {today}\n\n{text}"
-    if len(full_message) > 4096:
-        full_message = full_message[:4090] + "\n..."
 
-    resp = requests.post(
-        f"https://api.telegram.org/bot{bot_token}/sendMessage",
-        json={"chat_id": chat_id, "text": full_message, "disable_web_page_preview": False},
-        timeout=10,
-    )
-    if resp.status_code != 200:
-        print(f"텔레그램 발송 실패: {resp.status_code} {resp.text}", file=sys.stderr)
-        sys.exit(1)
-    print(f"텔레그램 발송 완료 → chat_id: {chat_id}")
+    # 4096자 초과 시 분할 전송
+    chunks = []
+    while full_message:
+        if len(full_message) <= 4096:
+            chunks.append(full_message)
+            break
+        split_at = full_message.rfind("\n", 0, 4096)
+        if split_at == -1:
+            split_at = 4096
+        chunks.append(full_message[:split_at])
+        full_message = full_message[split_at:].lstrip("\n")
+
+    for chunk in chunks:
+        resp = requests.post(
+            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+            json={"chat_id": chat_id, "text": chunk, "disable_web_page_preview": False},
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            print(f"텔레그램 발송 실패: {resp.status_code} {resp.text}", file=sys.stderr)
+            sys.exit(1)
+    print(f"텔레그램 발송 완료 → chat_id: {chat_id} ({len(chunks)}개 메시지)")
 
 
 def extract_keywords(result_text: str) -> list:
