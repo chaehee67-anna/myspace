@@ -142,12 +142,21 @@ HEADERS = {
 
 def resolve_url(url: str) -> str:
     """Google News 리다이렉트 URL → 실제 기사 URL로 변환."""
-    if "news.google.com/rss/articles" not in url:
+    if "news.google.com" not in url:
         return url
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=6, allow_redirects=True, stream=True)
-        resp.close()
-        return resp.url
+        resp = requests.get(url, headers=HEADERS, timeout=8, allow_redirects=True)
+        final = resp.url
+        if "news.google.com" not in final:
+            return final
+        # HTTP 리다이렉트 실패 시 HTML에서 실제 기사 링크 추출
+        match = re.search(
+            r'<a[^>]+href="(https?://(?!(?:www\.)?news\.google\.com)[^"]+)"',
+            resp.text,
+        )
+        if match:
+            return match.group(1)
+        return final
     except Exception:
         return url
 
@@ -276,7 +285,7 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
 
     result_parts = [block.text for block in message.content if hasattr(block, "text")]
     raw = "\n".join(result_parts).strip()
-    clean = re.sub(r"[*_`\[\]()~>+=|{}!]", "", raw)
+    clean = re.sub(r"[*_`\[\]()~>+|{}!]", "", raw)
     clean = re.sub(r"(?<!\w)#", "", clean)
     return clean
 
