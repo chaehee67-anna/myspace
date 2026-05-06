@@ -140,6 +140,18 @@ HEADERS = {
 }
 
 
+def resolve_url(url: str) -> str:
+    """Google News 리다이렉트 URL → 실제 기사 URL로 변환."""
+    if "news.google.com/rss/articles" not in url:
+        return url
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=6, allow_redirects=True, stream=True)
+        resp.close()
+        return resp.url
+    except Exception:
+        return url
+
+
 SLOT_MAX_HOURS = {
     1: 12, 2: 12, 3: 24, 4: 24, 5: 24, 6: 48,
 }
@@ -170,7 +182,7 @@ def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
                 batch: list[tuple[datetime, str]] = []
                 for entry in feed.entries[:20]:
                     title = entry.get("title", "").strip()
-                    link = entry.get("link", "").strip()
+                    link = resolve_url(entry.get("link", "").strip())
                     if not title or not link:
                         continue
                     pub = entry.get("published_parsed") or entry.get("updated_parsed")
@@ -186,7 +198,7 @@ def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
                     print(f"  → 날짜 필터 후 0건, 7일 이내로 완화 재수집")
                     for entry in feed.entries[:10]:
                         title = entry.get("title", "").strip()
-                        link = entry.get("link", "").strip()
+                        link = resolve_url(entry.get("link", "").strip())
                         if not title or not link:
                             continue
                         pub = entry.get("published_parsed") or entry.get("updated_parsed")
