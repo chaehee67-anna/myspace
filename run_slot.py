@@ -29,8 +29,8 @@ SLOT_SKILL_MAP = {
     2: "slot2.md",
     3: "slot3.md",
     4: "slot4.md",
-    5: "slot5-6.md",
-    6: "slot5-6.md",
+    5: "slot5.md",
+    6: "slot6.md",
 }
 
 SLOT_LABEL = {
