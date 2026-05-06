@@ -255,6 +255,12 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
                 time.sleep(60)
             else:
                 raise
+        except Exception as e:
+            if attempt < 2:
+                print(f"Claude API 오류 ({type(e).__name__}), 30초 후 재시도...")
+                time.sleep(30)
+            else:
+                raise
 
     result_parts = [block.text for block in message.content if hasattr(block, "text")]
     raw = "\n".join(result_parts).strip()
@@ -330,6 +336,17 @@ def main():
     slot = args.slot
 
     print(f"=== {SLOT_LABEL[slot]} 실행 시작 ===")
+    try:
+        _run(slot)
+    except Exception as e:
+        import traceback
+        err = traceback.format_exc()
+        print(err, file=sys.stderr)
+        _send_debug(f"[SLOT {slot}] 예외 발생\n{type(e).__name__}: {e}\n\n{err[:500]}", slot)
+        sys.exit(1)
+
+
+def _run(slot: int):
 
     history_data = load_history()
     history_data = clean_expired(history_data)
