@@ -255,9 +255,9 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
         f"아래 기사 목록에서 최대 3개를 골라 아래 형식으로만 출력하라.\n"
         f"조건과 맞지 않아도 목록에 있는 기사 중 가장 적합한 것을 반드시 선택한다. 거절·설명·분석 없이 형식만 출력한다.\n\n"
         f"형식:\n"
-        f"1. [제목]\n[핵심 내용 1~2줄]\n[링크]\n\n"
-        f"2. [제목]\n[핵심 내용 1~2줄]\n[링크]\n\n"
-        f"3. [제목]\n[핵심 내용 1~2줄]\n[링크]\n\n"
+        f"1. [제목]\n[링크]\n\n"
+        f"2. [제목]\n[링크]\n\n"
+        f"3. [제목]\n[링크]\n\n"
         f"--- 기사 목록 ---\n{articles}"
     )
 
@@ -265,7 +265,7 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
         try:
             message = client.messages.create(
                 model="claude-haiku-4-5-20251001",
-                max_tokens=600,
+                max_tokens=400,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_message}],
             )
