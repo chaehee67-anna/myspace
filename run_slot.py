@@ -10,15 +10,14 @@ import os
 import re
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import anthropic
 import feedparser
-import pytz
 import requests
 
-KST = pytz.timezone("Asia/Seoul")
+KST = timezone(timedelta(hours=9))
 BASE_DIR = Path(__file__).parent
 SKILLS_DIR = BASE_DIR / "skills"
 HISTORY_FILE = BASE_DIR / "history" / "history.json"
