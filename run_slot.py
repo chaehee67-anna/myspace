@@ -57,6 +57,8 @@ RSS_FEEDS = {
     "jtbc": "https://news.jtbc.co.kr/rss/politics.xml",
     # 커뮤니티 반응 정치 뉴스
     "community": "https://news.google.com/rss/search?q=이재명+OR+윤석열+OR+국힘+OR+민주당+누리꾼+OR+커뮤니티+OR+반응&hl=ko&gl=KR&ceid=KR:ko",
+    # 국무회의
+    "cabinet": "https://news.google.com/rss/search?q=국무회의&hl=ko&gl=KR&ceid=KR:ko",
     # 슬롯6 전용: 유튜브 채널 언급 뉴스
     "youtube_politics": "https://news.google.com/rss/search?q=매불쇼+OR+뉴스하이킥+OR+뉴스타파+OR+장르만여의도+OR+시방쇼&hl=ko&gl=KR&ceid=KR:ko",
     "youtube_media":    "https://news.google.com/rss/search?q=MBC뉴스+유튜브+OR+JTBC+유튜브+OR+시사IN+유튜브&hl=ko&gl=KR&ceid=KR:ko",
@@ -81,7 +83,7 @@ RSS_FALLBACK = {
 
 SLOT_RSS_MAP = {
     1: ["ohmynews", "hani", "mbc", "ytn"],               # 조간: 진보미디어 + 방송사
-    2: ["politics", "economy", "kyunghyang"],              # 정부브리핑: 정치경제 + 경향
+    2: ["politics", "economy", "kyunghyang", "cabinet"],  # 정부브리핑: 정치경제 + 경향 + 국무회의
     3: ["community", "ohmynews", "pressian"],              # 커뮤니티: 반응 + 진보논평
     4: ["community", "hani", "kyunghyang"],                # 커뮤니티심화: 반응 + 심층
     5: ["ytn", "mbc", "jtbc", "community"],                # 속보+커뮤니티: 방송속보 + 반응
