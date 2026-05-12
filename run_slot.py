@@ -254,9 +254,9 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
         f"아래 기사 목록에서 최대 3개를 골라 아래 형식으로만 출력하라.\n"
         f"조건과 맞지 않아도 목록에 있는 기사 중 가장 적합한 것을 반드시 선택한다. 거절·설명·분석 없이 형식만 출력한다.\n\n"
         f"형식:\n"
-        f"1. [제목]\n[링크]\n\n"
-        f"2. [제목]\n[링크]\n\n"
-        f"3. [제목]\n[링크]\n\n"
+        f"1. [제목]\n[출처 (언론사·유튜브채널·게시판명)]\n\n"
+        f"2. [제목]\n[출처 (언론사·유튜브채널·게시판명)]\n\n"
+        f"3. [제목]\n[출처 (언론사·유튜브채널·게시판명)]\n\n"
         f"--- 기사 목록 ---\n{articles}"
     )
 
@@ -353,8 +353,6 @@ NO_CONTENT_MARKERS = [
 def is_valid_result(text: str) -> bool:
     if len(text) < 20:
         return False
-    if "http" not in text:
-        return False
     if any(m in text for m in NO_CONTENT_MARKERS):
         return False
     return True
@@ -405,7 +403,6 @@ def _run(slot: int):
         _send_debug(
             f"[SLOT {slot}] is_valid_result 실패\n"
             f"길이: {len(result)}자\n"
-            f"출처 포함: {'출처:' in result or 'http' in result}\n"
             f"Claude 출력:\n{result[:300]}",
             slot,
         )
