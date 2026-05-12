@@ -65,7 +65,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           git reset --hard origin/main
-          git add history/history.json
+          git add -f history/history.json
           git diff --staged --quiet || git commit -m "chore: update history [slot ${{ steps.slot.outputs.number }}]"
           git push
 
