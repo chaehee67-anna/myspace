@@ -148,7 +148,6 @@ def resolve_url(url: str) -> str:
         final = resp.url
         if "news.google.com" not in final:
             return final
-        # HTTP 리다이렉트 실패 시 HTML에서 실제 기사 링크 추출
         match = re.search(
             r'<a[^>]+href="(https?://(?!(?:www\.)?news\.google\.com)[^"]+)"',
             resp.text,
@@ -171,7 +170,7 @@ def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
     max_hours = SLOT_MAX_HOURS[slot]
     now = datetime.now(KST)
     cutoff = now - timedelta(hours=max_hours)
-    wide_cutoff = now - timedelta(days=7)  # 폴백 재수집 시 최대 허용 범위
+    wide_cutoff = now - timedelta(days=7)
     articles: list[tuple[datetime, str]] = []
 
     for key in feed_keys:
@@ -195,13 +194,12 @@ def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
                         continue
                     pub = entry.get("published_parsed") or entry.get("updated_parsed")
                     if not pub:
-                        continue  # 발행일 없는 항목 제외
+                        continue
                     pub_dt = datetime.fromtimestamp(calendar.timegm(pub), tz=KST)
                     if pub_dt < cutoff:
                         continue
                     summary = re.sub(r"<[^>]+>", "", entry.get("summary", ""))[:200].strip()
                     batch.append((pub_dt, f"제목: {title}\n요약: {summary}\n링크: {link}"))
-                # 날짜 필터 후 0건이면 7일 이내로 완화해서 재시도
                 if not batch:
                     print(f"  → 날짜 필터 후 0건, 7일 이내로 완화 재수집")
                     for entry in feed.entries[:10]:
@@ -224,7 +222,6 @@ def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
             except Exception as e:
                 print(f"RSS 파싱 실패 [{key}] {source}: {e}")
 
-    # 최신순 정렬 후 중복 제거
     articles.sort(key=lambda x: x[0], reverse=True)
     seen, unique = set(), []
     for _, text in articles:
@@ -253,8 +250,9 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
         f"슬롯: {SLOT_LABEL[slot]}\n\n"
         f"아래 기사 목록에서 최대 3개를 골라 아래 형식으로만 출력하라.\n"
         f"조건과 맞지 않아도 목록에 있는 기사 중 가장 적합한 것을 반드시 선택한다. 거절·설명·분석 없이 형식만 출력한다.\n\n"
-        f"- 언론사·유튜브 기사: 출처명만\n"
-        f"- 커뮤니티 이슈: 게시판명 | 이슈 키워드\n\n"
+        f"- 언론사 기사: 출처명만\n"
+        f"- 커뮤니티 이슈: 게시판명 | 게시글 제목 | 키워드\n"
+        f"- 유튜브 이슈: 채널명 | 영상 제목 | 키워드 | 인물명\n\n"
         f"형식:\n"
         f"1. [제목]\n[출처]\n\n"
         f"2. [제목]\n[출처]\n\n"
@@ -311,7 +309,6 @@ def send_telegram(text: str, slot: int):
 
     full_message = f"📋 {SLOT_LABEL[slot]}\n🗓 {today}\n\n{text}"
 
-    # 4096자 초과 시 분할 전송
     chunks = []
     while full_message:
         if len(full_message) <= 4096:
