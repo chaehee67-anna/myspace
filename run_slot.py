@@ -60,8 +60,9 @@ RSS_FEEDS = {
     # 국무회의
     "cabinet": "https://news.google.com/rss/search?q=국무회의&hl=ko&gl=KR&ceid=KR:ko",
     # 슬롯6 전용: 유튜브 채널 언급 뉴스
-    "youtube_politics": "https://news.google.com/rss/search?q=매불쇼+OR+뉴스하이킥+OR+뉴스타파+OR+장르만여의도+OR+시방쇼&hl=ko&gl=KR&ceid=KR:ko",
-    "youtube_media":    "https://news.google.com/rss/search?q=MBC뉴스+유튜브+OR+JTBC+유튜브+OR+시사IN+유튜브&hl=ko&gl=KR&ceid=KR:ko",
+    "youtube_politics": "https://news.google.com/rss/search?q=매불쇼+OR+뉴스하이킥+OR+뉴스타파+OR+장르만여의도+OR+시방쇼+OR+알릴레오+OR+이동형TV+OR+오마이TV&hl=ko&gl=KR&ceid=KR:ko",
+    "youtube_media":    "https://news.google.com/rss/search?q=MBC뉴스+유튜브+OR+JTBC+유튜브+OR+시사IN+유튜브+OR+KBS뉴스+유튜브+OR+SBS뉴스+유튜브+OR+한겨레TV&hl=ko&gl=KR&ceid=KR:ko",
+    "youtube_viral":    "https://news.google.com/rss/search?q=정치+유튜브+클립+OR+유튜브+화제+OR+유튜브+조회수+OR+정치+유튜브+바이럴&hl=ko&gl=KR&ceid=KR:ko",
 }
 
 # 접근 실패 시 폴백 (Google News - 해외 IP 항상 접근 가능)
@@ -77,8 +78,9 @@ RSS_FALLBACK = {
     "ytn":        "https://news.google.com/rss/search?q=YTN+속보+정치&hl=ko&gl=KR&ceid=KR:ko",
     "jtbc":       "https://news.google.com/rss/search?q=JTBC+뉴스+정치&hl=ko&gl=KR&ceid=KR:ko",
     "community":        "https://news.google.com/rss/search?q=이재명+OR+윤석열+OR+국힘+누리꾼+OR+커뮤니티&hl=ko&gl=KR&ceid=KR:ko",
-    "youtube_politics": "https://news.google.com/rss/search?q=매불쇼+OR+뉴스하이킥+OR+뉴스타파&hl=ko&gl=KR&ceid=KR:ko",
-    "youtube_media":    "https://news.google.com/rss/search?q=유튜브+정치+클립+화제&hl=ko&gl=KR&ceid=KR:ko",
+    "youtube_politics": "https://news.google.com/rss/search?q=매불쇼+OR+뉴스하이킥+OR+뉴스타파+OR+알릴레오+OR+이동형TV&hl=ko&gl=KR&ceid=KR:ko",
+    "youtube_media":    "https://news.google.com/rss/search?q=MBC뉴스+유튜브+OR+JTBC+유튜브+OR+KBS뉴스+유튜브&hl=ko&gl=KR&ceid=KR:ko",
+    "youtube_viral":    "https://news.google.com/rss/search?q=정치+유튜브+화제+OR+유튜브+바이럴+정치&hl=ko&gl=KR&ceid=KR:ko",
 }
 
 SLOT_RSS_MAP = {
@@ -87,7 +89,7 @@ SLOT_RSS_MAP = {
     3: ["community", "ohmynews", "pressian"],              # 커뮤니티: 반응 + 진보논평
     4: ["community", "hani", "kyunghyang"],                # 커뮤니티심화: 반응 + 심층
     5: ["ytn", "mbc", "jtbc", "community"],                # 속보+커뮤니티: 방송속보 + 반응
-    6: ["youtube_politics", "youtube_media", "newstapa"],  # 유튜브리서치
+    6: ["youtube_politics", "youtube_media", "youtube_viral", "newstapa"],  # 유튜브리서치
 }
 
 
