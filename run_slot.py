@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 run_slot.py - 슬롯 실행 메인 스크립트
-GitHub Actions에서 호출됨
+GitHub Actions 또는 Claude Code 로컬 실행 지원
+TELEGRAM_BOT_TOKEN 없으면 stdout으로 출력
 """
 
 import argparse
@@ -16,6 +17,12 @@ from pathlib import Path
 import anthropic
 import feedparser
 import requests
+
+try:
+    from bs4 import BeautifulSoup
+    BS4_AVAILABLE = True
+except ImportError:
+    BS4_AVAILABLE = False
 
 KST = timezone(timedelta(hours=9))
 BASE_DIR = Path(__file__).parent
@@ -52,44 +59,69 @@ RSS_FEEDS = {
     "newstapa":   "https://newstapa.org/feed",
     "pressian":   "https://www.pressian.com/rss",
     # 방송사 RSS
-    "mbc":  "https://imnews.imbc.com/rss/news/news_00.xml",
-    "ytn":  "https://www.ytn.co.kr/_ln/rss/0101.xml",
-    "jtbc": "https://news.jtbc.co.kr/rss/politics.xml",
-    # 커뮤니티 반응 정치 뉴스
-    "community": "https://news.google.com/rss/search?q=이재명+OR+윤석열+OR+국힘+OR+민주당+누리꾼+OR+커뮤니티+OR+반응&hl=ko&gl=KR&ceid=KR:ko",
+    "mbc":   "https://imnews.imbc.com/rss/news/news_00.xml",
+    "ytn":   "https://www.ytn.co.kr/_ln/rss/0101.xml",
+    "jtbc":  "https://news.jtbc.co.kr/rss/politics.xml",
+    "kbs":   "https://news.kbs.co.kr/rss/rss.do?scd=politics",
+    "sbs":   "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionType=02",
+    # 통신사
+    "yonhap":    "https://www.yonhapnewstv.co.kr/browse/feed/",
+    "nocutnews": "https://www.nocutnews.co.kr/rss/S1N0.xml",
+    # 커뮤니티 RSS
+    "clien_rss": "https://www.clien.net/service/rss",
+    # 커뮤니티 반응 (Google News)
+    "community":     "https://news.google.com/rss/search?q=이재명+OR+윤석열+OR+국힘+OR+민주당+누리꾼+OR+커뮤니티+OR+반응&hl=ko&gl=KR&ceid=KR:ko",
+    "community_hot": "https://news.google.com/rss/search?q=이재명+OR+국힘+OR+윤석열+화제+OR+논란+OR+분노+OR+비판&hl=ko&gl=KR&ceid=KR:ko",
+    "community_fem": "https://news.google.com/rss/search?q=온라인+반응+OR+여론+OR+지지층+이재명+OR+국힘+OR+윤석열&hl=ko&gl=KR&ceid=KR:ko",
     # 국무회의
     "cabinet": "https://news.google.com/rss/search?q=국무회의&hl=ko&gl=KR&ceid=KR:ko",
-    # 슬롯6 전용: 유튜브 채널 언급 뉴스
+    # 슬롯6: 유튜브 채널 언급 뉴스
     "youtube_politics": "https://news.google.com/rss/search?q=매불쇼+OR+뉴스하이킥+OR+뉴스타파+OR+장르만여의도+OR+시방쇼+OR+알릴레오+OR+이동형TV+OR+오마이TV&hl=ko&gl=KR&ceid=KR:ko",
     "youtube_media":    "https://news.google.com/rss/search?q=MBC뉴스+유튜브+OR+JTBC+유튜브+OR+시사IN+유튜브+OR+KBS뉴스+유튜브+OR+SBS뉴스+유튜브+OR+한겨레TV&hl=ko&gl=KR&ceid=KR:ko",
     "youtube_viral":    "https://news.google.com/rss/search?q=정치+유튜브+클립+OR+유튜브+화제+OR+유튜브+조회수+OR+정치+유튜브+바이럴&hl=ko&gl=KR&ceid=KR:ko",
 }
 
-# 접근 실패 시 폴백 (Google News - 해외 IP 항상 접근 가능)
 RSS_FALLBACK = {
-    "politics":   "https://news.google.com/rss/search?q=한국+정치&hl=ko&gl=KR&ceid=KR:ko",
-    "economy":    "https://news.google.com/rss/search?q=한국+경제&hl=ko&gl=KR&ceid=KR:ko",
-    "ohmynews":   "https://news.google.com/rss/search?q=오마이뉴스+정치&hl=ko&gl=KR&ceid=KR:ko",
-    "hani":       "https://news.google.com/rss/search?q=한겨레+정치&hl=ko&gl=KR&ceid=KR:ko",
-    "kyunghyang": "https://news.google.com/rss/search?q=경향신문+정치&hl=ko&gl=KR&ceid=KR:ko",
-    "newstapa":   "https://news.google.com/rss/search?q=뉴스타파&hl=ko&gl=KR&ceid=KR:ko",
-    "pressian":   "https://news.google.com/rss/search?q=프레시안+정치&hl=ko&gl=KR&ceid=KR:ko",
-    "mbc":        "https://news.google.com/rss/search?q=MBC+뉴스+정치&hl=ko&gl=KR&ceid=KR:ko",
-    "ytn":        "https://news.google.com/rss/search?q=YTN+속보+정치&hl=ko&gl=KR&ceid=KR:ko",
-    "jtbc":       "https://news.google.com/rss/search?q=JTBC+뉴스+정치&hl=ko&gl=KR&ceid=KR:ko",
-    "community":        "https://news.google.com/rss/search?q=이재명+OR+윤석열+OR+국힘+누리꾼+OR+커뮤니티&hl=ko&gl=KR&ceid=KR:ko",
+    "politics":      "https://news.google.com/rss/search?q=한국+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "economy":       "https://news.google.com/rss/search?q=한국+경제&hl=ko&gl=KR&ceid=KR:ko",
+    "ohmynews":      "https://news.google.com/rss/search?q=오마이뉴스+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "hani":          "https://news.google.com/rss/search?q=한겨레+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "kyunghyang":    "https://news.google.com/rss/search?q=경향신문+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "newstapa":      "https://news.google.com/rss/search?q=뉴스타파&hl=ko&gl=KR&ceid=KR:ko",
+    "pressian":      "https://news.google.com/rss/search?q=프레시안+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "mbc":           "https://news.google.com/rss/search?q=MBC+뉴스+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "ytn":           "https://news.google.com/rss/search?q=YTN+속보+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "jtbc":          "https://news.google.com/rss/search?q=JTBC+뉴스+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "kbs":           "https://news.google.com/rss/search?q=KBS+뉴스+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "sbs":           "https://news.google.com/rss/search?q=SBS+뉴스+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "yonhap":        "https://news.google.com/rss/search?q=연합뉴스+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "nocutnews":     "https://news.google.com/rss/search?q=노컷뉴스+정치&hl=ko&gl=KR&ceid=KR:ko",
+    "clien_rss":     "https://news.google.com/rss/search?q=클리앙+정치+이슈&hl=ko&gl=KR&ceid=KR:ko",
+    "community":     "https://news.google.com/rss/search?q=이재명+OR+윤석열+OR+국힘+누리꾼+OR+커뮤니티&hl=ko&gl=KR&ceid=KR:ko",
+    "community_hot": "https://news.google.com/rss/search?q=이재명+OR+국힘+화제+OR+논란&hl=ko&gl=KR&ceid=KR:ko",
+    "community_fem": "https://news.google.com/rss/search?q=온라인+반응+이재명+OR+국힘&hl=ko&gl=KR&ceid=KR:ko",
     "youtube_politics": "https://news.google.com/rss/search?q=매불쇼+OR+뉴스하이킥+OR+뉴스타파+OR+알릴레오+OR+이동형TV&hl=ko&gl=KR&ceid=KR:ko",
     "youtube_media":    "https://news.google.com/rss/search?q=MBC뉴스+유튜브+OR+JTBC+유튜브+OR+KBS뉴스+유튜브&hl=ko&gl=KR&ceid=KR:ko",
     "youtube_viral":    "https://news.google.com/rss/search?q=정치+유튜브+화제+OR+유튜브+바이럴+정치&hl=ko&gl=KR&ceid=KR:ko",
 }
 
 SLOT_RSS_MAP = {
-    1: ["ohmynews", "hani", "mbc", "ytn"],               # 조간: 진보미디어 + 방송사
-    2: ["politics", "economy", "kyunghyang", "cabinet"],  # 정부브리핑: 정치경제 + 경향 + 국무회의
-    3: ["community", "ohmynews", "pressian"],              # 커뮤니티: 반응 + 진보논평
-    4: ["community", "hani", "kyunghyang"],                # 커뮤니티심화: 반응 + 심층
-    5: ["ytn", "mbc", "jtbc", "community"],                # 속보+커뮤니티: 방송속보 + 반응
-    6: ["youtube_politics", "youtube_media", "youtube_viral", "newstapa"],  # 유튜브리서치
+    1: ["ohmynews", "hani", "mbc", "ytn", "kbs", "nocutnews"],
+    2: ["politics", "economy", "kyunghyang", "cabinet", "yonhap", "sbs"],
+    3: ["community", "community_hot", "clien_rss", "ohmynews", "pressian"],
+    4: ["community", "community_hot", "community_fem", "hani", "kyunghyang"],
+    5: ["ytn", "mbc", "jtbc", "sbs", "community", "community_hot"],
+    6: ["youtube_politics", "youtube_media", "youtube_viral", "newstapa"],
+}
+
+# Naver News API 슬롯별 검색 쿼리 (NAVER_CLIENT_ID 설정 시 사용)
+SLOT_NAVER_QUERIES = {
+    1: ["이재명 민주당", "윤석열 국힘 정치"],
+    2: ["국무회의 오늘", "정부 브리핑 발표"],
+    3: ["커뮤니티 반응 이재명", "온라인 반응 국힘 논란"],
+    4: ["이재명 여론 지지율", "국힘 논란 이슈"],
+    5: ["이재명 속보", "국힘 속보 윤석열"],
+    6: ["정치 유튜브 화제", "매불쇼 뉴스하이킥 정치"],
 }
 
 
@@ -163,12 +195,55 @@ def resolve_url(url: str) -> str:
         return url
 
 
+def search_naver_news(query: str, display: int = 30) -> list[dict]:
+    """Naver News Search API 호출. NAVER_CLIENT_ID 없으면 빈 리스트."""
+    client_id = os.environ.get("NAVER_CLIENT_ID")
+    client_secret = os.environ.get("NAVER_CLIENT_SECRET")
+    if not client_id or not client_secret:
+        return []
+    try:
+        resp = requests.get(
+            "https://openapi.naver.com/v1/search/news.json",
+            headers={"X-Naver-Client-Id": client_id, "X-Naver-Client-Secret": client_secret},
+            params={"query": query, "display": display, "sort": "date"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return resp.json().get("items", [])
+    except Exception as e:
+        print(f"Naver API 오류 [{query}]: {e}")
+        return []
+
+
+def scrape_clien_board(board: str = "park", count: int = 25) -> list[tuple[datetime, str]]:
+    """클리앙 게시판 직접 스크래핑. BS4 없으면 빈 리스트."""
+    if not BS4_AVAILABLE:
+        return []
+    url = f"https://www.clien.net/service/board/{board}"
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=10)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        results = []
+        for item in soup.select("a.list_subject")[:count]:
+            title = item.get_text(strip=True)
+            href = item.get("href", "")
+            if not title or not href:
+                continue
+            link = "https://www.clien.net" + href if href.startswith("/") else href
+            results.append((datetime.now(KST), f"제목: [클리앙 파크] {title}\n요약: \n링크: {link}"))
+        print(f"클리앙 {board} 스크래핑: {len(results)}개")
+        return results
+    except Exception as e:
+        print(f"클리앙 스크래핑 실패 [{board}]: {e}")
+        return []
+
+
 SLOT_MAX_HOURS = {
     1: 12, 2: 12, 3: 24, 4: 24, 5: 24, 6: 48,
 }
 
 
-def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
+def fetch_rss_articles(slot: int, max_articles: int = 30) -> str:
     import calendar
     feed_keys = SLOT_RSS_MAP[slot]
     max_hours = SLOT_MAX_HOURS[slot]
@@ -177,6 +252,7 @@ def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
     wide_cutoff = now - timedelta(days=7)
     articles: list[tuple[datetime, str]] = []
 
+    # RSS 피드 수집
     for key in feed_keys:
         primary = RSS_FEEDS.get(key, "")
         fallback = RSS_FALLBACK.get(key, "")
@@ -191,7 +267,7 @@ def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
                 if count == 0:
                     continue
                 batch: list[tuple[datetime, str]] = []
-                for entry in feed.entries[:20]:
+                for entry in feed.entries[:40]:
                     title = entry.get("title", "").strip()
                     link = resolve_url(entry.get("link", "").strip())
                     if not title or not link:
@@ -206,7 +282,7 @@ def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
                     batch.append((pub_dt, f"제목: {title}\n요약: {summary}\n링크: {link}"))
                 if not batch:
                     print(f"  → 날짜 필터 후 0건, 7일 이내로 완화 재수집")
-                    for entry in feed.entries[:10]:
+                    for entry in feed.entries[:20]:
                         title = entry.get("title", "").strip()
                         link = resolve_url(entry.get("link", "").strip())
                         if not title or not link:
@@ -225,6 +301,32 @@ def fetch_rss_articles(slot: int, max_articles: int = 15) -> str:
                     break
             except Exception as e:
                 print(f"RSS 파싱 실패 [{key}] {source}: {e}")
+
+    # Naver News API (NAVER_CLIENT_ID 설정 시)
+    naver_queries = SLOT_NAVER_QUERIES.get(slot, [])
+    for query in naver_queries:
+        items = search_naver_news(query, display=30)
+        if items:
+            print(f"Naver API [{query}]: {len(items)}개")
+        for item in items:
+            title = re.sub(r"<[^>]+>", "", item.get("title", "")).strip()
+            link = item.get("link") or item.get("originallink", "")
+            desc = re.sub(r"<[^>]+>", "", item.get("description", ""))[:200].strip()
+            pub_str = item.get("pubDate", "")
+            try:
+                from email.utils import parsedate_to_datetime
+                pub_dt = parsedate_to_datetime(pub_str).astimezone(KST)
+            except Exception:
+                pub_dt = datetime.now(KST)
+            if pub_dt < cutoff:
+                continue
+            if title and link:
+                articles.append((pub_dt, f"제목: {title}\n요약: {desc}\n링크: {link}"))
+
+    # 클리앙 직접 스크래핑 (슬롯 3, 4)
+    if slot in (3, 4):
+        clien_articles = scrape_clien_board("park", count=25)
+        articles.extend(clien_articles)
 
     articles.sort(key=lambda x: x[0], reverse=True)
     seen, unique = set(), []
@@ -252,8 +354,9 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
     user_message = (
         f"오늘: {today} KST\n"
         f"슬롯: {SLOT_LABEL[slot]}\n\n"
-        f"아래 기사 목록에서 최대 3개를 골라 아래 형식으로만 출력하라.\n"
-        f"조건과 맞지 않아도 목록에 있는 기사 중 가장 적합한 것을 반드시 선택한다. 거절·설명·분석 없이 형식만 출력한다.\n\n"
+        f"아래 기사 목록에서 최대 5개를 골라 아래 형식으로만 출력하라.\n"
+        f"포지셔닝(이재명 지지·국힘 비판) 기준으로 가장 임팩트 있는 소재를 우선 선택한다.\n"
+        f"조건과 맞지 않아도 목록에서 반드시 선택한다. 거절·설명·분석 없이 형식만 출력한다.\n\n"
         f"- 언론사 기사: 출처명만\n"
         f"- 커뮤니티 이슈: 게시판명 | 게시글 제목 | 키워드\n"
         f"- 유튜브 이슈: 채널명 | 영상 제목 | 키워드 | 인물명\n\n"
@@ -261,6 +364,8 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
         f"1. [제목]\n[출처]\n\n"
         f"2. [제목]\n[출처]\n\n"
         f"3. [제목]\n[출처]\n\n"
+        f"4. [제목]\n[출처]\n\n"
+        f"5. [제목]\n[출처]\n\n"
         f"--- 기사 목록 ---\n{articles}"
     )
 
@@ -268,7 +373,7 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
         try:
             message = client.messages.create(
                 model="claude-haiku-4-5-20251001",
-                max_tokens=400,
+                max_tokens=1000,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_message}],
             )
@@ -294,9 +399,12 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
 
 
 def _send_debug(msg: str, slot: int):
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not bot_token:
+        print(f"[DEBUG SLOT {slot}] {msg}")
+        return
     try:
-        bot_token = os.environ["TELEGRAM_BOT_TOKEN"]
-        chat_id = os.environ["TELEGRAM_CHAT_ID"]
+        chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
         requests.post(
             f"https://api.telegram.org/bot{bot_token}/sendMessage",
             json={"chat_id": chat_id, "text": f"🔧 DEBUG SLOT {slot}\n\n{msg}"},
@@ -307,11 +415,17 @@ def _send_debug(msg: str, slot: int):
 
 
 def send_telegram(text: str, slot: int):
-    bot_token = os.environ["TELEGRAM_BOT_TOKEN"]
-    chat_id = os.environ["TELEGRAM_CHAT_ID"]
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
     today = today_kst()
-
     full_message = f"📋 {SLOT_LABEL[slot]}\n🗓 {today}\n\n{text}"
+
+    # 로컬 실행 모드: 토큰 없으면 stdout 출력
+    if not bot_token or not chat_id:
+        print("\n" + "=" * 60)
+        print(full_message)
+        print("=" * 60)
+        return
 
     chunks = []
     while full_message:
@@ -342,7 +456,7 @@ def extract_keywords(result_text: str) -> list:
         line = line.strip().lstrip("-").strip()
         if len(line) > 4 and not line.startswith("http"):
             keywords.append(line[:20].replace(" ", ""))
-        if len(keywords) >= 5:
+        if len(keywords) >= 7:
             break
     return keywords
 
@@ -400,7 +514,7 @@ def _run(slot: int):
     print("Claude API 호출 중 (포맷팅)...")
     result = call_claude(system_prompt, slot, articles)
     print(f"결과: {len(result)}자")
-    print(result[:200] + "..." if len(result) > 200 else result)
+    print(result[:300] + "..." if len(result) > 300 else result)
 
     if not is_valid_result(result):
         _send_debug(
@@ -409,7 +523,7 @@ def _run(slot: int):
             f"Claude 출력:\n{result[:300]}",
             slot,
         )
-        print("유효한 소재 없음 — 텔레그램 전송 건너뜀")
+        print("유효한 소재 없음 — 전송 건너뜀")
         print(f"=== SLOT {slot} 완료 (전송 없음) ===")
         sys.exit(0)
 
