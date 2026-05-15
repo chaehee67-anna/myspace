@@ -11,12 +11,18 @@ import os
 import re
 import sys
 import time
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import anthropic
-import feedparser
 import requests
+
+try:
+    import feedparser
+    FEEDPARSER_AVAILABLE = True
+except Exception:
+    FEEDPARSER_AVAILABLE = False
 
 try:
     from bs4 import BeautifulSoup
@@ -216,7 +222,7 @@ def search_naver_news(query: str, display: int = 30) -> list[dict]:
 
 
 def scrape_clien_board(board: str = "park", count: int = 25) -> list[tuple[datetime, str]]:
-    """클리앙 게시판 직접 스크래핑. BS4 없으면 빈 리스트."""
+    """클리얙 게시판 직접 스크래핑. BS4 없으면 빈 리스트."""
     if not BS4_AVAILABLE:
         return []
     url = f"https://www.clien.net/service/board/{board}"
@@ -230,11 +236,11 @@ def scrape_clien_board(board: str = "park", count: int = 25) -> list[tuple[datet
             if not title or not href:
                 continue
             link = "https://www.clien.net" + href if href.startswith("/") else href
-            results.append((datetime.now(KST), f"제목: [클리앙 파크] {title}\n요약: \n링크: {link}"))
-        print(f"클리앙 {board} 스크래핑: {len(results)}개")
+            results.append((datetime.now(KST), f"제목: [클리얙 파크] {title}\n요약: \n링크: {link}"))
+        print(f"클리얙 {board} 스크래핑: {len(results)}개")
         return results
     except Exception as e:
-        print(f"클리앙 스크래핑 실패 [{board}]: {e}")
+        print(f"클리얙 스크래핑 실패 [{board}]: {e}")
         return []
 
 
@@ -243,8 +249,98 @@ SLOT_MAX_HOURS = {
 }
 
 
-def fetch_rss_articles(slot: int, max_articles: int = 30) -> str:
+def _parse_pub_date(pub_str: str):
+    """날짜 문자열 → KST datetime 변환 (RFC2822 / ISO8601)."""
+    if not pub_str:
+        return None
+    try:
+        from email.utils import parsedate_to_datetime
+        return parsedate_to_datetime(pub_str.strip()).astimezone(KST)
+    except Exception:
+        pass
+    for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"):
+        try:
+            dt = datetime.strptime(pub_str.strip()[:19], fmt)
+            return dt.replace(tzinfo=timezone.utc).astimezone(KST)
+        except Exception:
+            pass
+    return None
+
+
+def _parse_rss_xml(xml_text: str) -> list[dict]:
+    """RSS 2.0 / Atom XML → 항목 리스트. feedparser 없을 때 사용."""
+    xml_text = re.sub(r"&(?!amp;|lt;|gt;|quot;|apos;|#\w+;)", "&amp;", xml_text)
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError:
+        return []
+
+    ATOM = "http://www.w3.org/2005/Atom"
+    entries = []
+
+    # RSS 2.0
+    for item in root.findall(".//item"):
+        title = (item.findtext("title") or "").strip()
+        link_el = item.find("link")
+        link = ""
+        if link_el is not None:
+            link = (link_el.text or "").strip()
+            if not link and link_el.tail:
+                link = link_el.tail.strip()
+        pub_str = (item.findtext("pubDate") or "").strip()
+        summary = re.sub(r"<[^>]+>", "", item.findtext("description") or "")[:200].strip()
+        entries.append({"title": title, "link": link, "pub_str": pub_str, "summary": summary})
+
+    if entries:
+        return entries
+
+    # Atom
+    for item in (root.findall(f"{{{ATOM}}}entry") or root.findall("entry")):
+        title_el = item.find(f"{{{ATOM}}}title") or item.find("title")
+        title = (title_el.text or "").strip() if title_el is not None else ""
+        link_el = item.find(f"{{{ATOM}}}link") or item.find("link")
+        link = ""
+        if link_el is not None:
+            link = link_el.get("href", link_el.text or "").strip()
+        pub_el = (item.find(f"{{{ATOM}}}published") or item.find("published")
+                  or item.find(f"{{{ATOM}}}updated") or item.find("updated"))
+        pub_str = (pub_el.text or "").strip() if pub_el is not None else ""
+        sum_el = item.find(f"{{{ATOM}}}summary") or item.find("summary")
+        summary = re.sub(r"<[^>]+>", "", sum_el.text or "")[:200].strip() if sum_el is not None else ""
+        entries.append({"title": title, "link": link, "pub_str": pub_str, "summary": summary})
+
+    return entries
+
+
+def _parse_feed(xml_text: str) -> list[dict]:
+    """feedparser 있으면 사용, 없으면 XML 직접 파싱."""
     import calendar
+    if FEEDPARSER_AVAILABLE:
+        feed = feedparser.parse(xml_text)
+        result = []
+        for e in feed.entries:
+            pub = e.get("published_parsed") or e.get("updated_parsed")
+            pub_dt = datetime.fromtimestamp(calendar.timegm(pub), tz=KST) if pub else None
+            result.append({
+                "title": e.get("title", "").strip(),
+                "link": e.get("link", "").strip(),
+                "pub_dt": pub_dt,
+                "summary": re.sub(r"<[^>]+>", "", e.get("summary", ""))[:200].strip(),
+            })
+        return result
+    else:
+        result = []
+        for e in _parse_rss_xml(xml_text):
+            result.append({
+                "title": e["title"],
+                "link": e["link"],
+                "pub_dt": _parse_pub_date(e["pub_str"]),
+                "summary": e["summary"],
+            })
+        return result
+
+
+def fetch_rss_articles(slot: int, max_articles: int = 30) -> str:
     feed_keys = SLOT_RSS_MAP[slot]
     max_hours = SLOT_MAX_HOURS[slot]
     now = datetime.now(KST)
@@ -261,39 +357,33 @@ def fetch_rss_articles(slot: int, max_articles: int = 30) -> str:
             try:
                 resp = requests.get(url, headers=HEADERS, timeout=10)
                 resp.raise_for_status()
-                feed = feedparser.parse(resp.text)
-                count = len(feed.entries)
+                parsed = _parse_feed(resp.text)
+                count = len(parsed)
                 print(f"RSS [{key}] {source}: {count}개 항목 수신")
                 if count == 0:
                     continue
                 batch: list[tuple[datetime, str]] = []
-                for entry in feed.entries[:40]:
-                    title = entry.get("title", "").strip()
-                    link = resolve_url(entry.get("link", "").strip())
+                for entry in parsed[:40]:
+                    title = entry["title"]
+                    link = resolve_url(entry["link"])
                     if not title or not link:
                         continue
-                    pub = entry.get("published_parsed") or entry.get("updated_parsed")
-                    if not pub:
+                    pub_dt = entry["pub_dt"]
+                    if pub_dt is None or pub_dt < cutoff:
                         continue
-                    pub_dt = datetime.fromtimestamp(calendar.timegm(pub), tz=KST)
-                    if pub_dt < cutoff:
-                        continue
-                    summary = re.sub(r"<[^>]+>", "", entry.get("summary", ""))[:200].strip()
+                    summary = entry["summary"]
                     batch.append((pub_dt, f"제목: {title}\n요약: {summary}\n링크: {link}"))
                 if not batch:
                     print(f"  → 날짜 필터 후 0건, 7일 이내로 완화 재수집")
-                    for entry in feed.entries[:20]:
-                        title = entry.get("title", "").strip()
-                        link = resolve_url(entry.get("link", "").strip())
+                    for entry in parsed[:20]:
+                        title = entry["title"]
+                        link = resolve_url(entry["link"])
                         if not title or not link:
                             continue
-                        pub = entry.get("published_parsed") or entry.get("updated_parsed")
-                        if not pub:
+                        pub_dt = entry["pub_dt"]
+                        if pub_dt is None or pub_dt < wide_cutoff:
                             continue
-                        pub_dt = datetime.fromtimestamp(calendar.timegm(pub), tz=KST)
-                        if pub_dt < wide_cutoff:
-                            continue
-                        summary = re.sub(r"<[^>]+>", "", entry.get("summary", ""))[:200].strip()
+                        summary = entry["summary"]
                         batch.append((pub_dt, f"제목: {title}\n요약: {summary}\n링크: {link}"))
                 print(f"  → 최종: {len(batch)}개")
                 articles.extend(batch)
@@ -313,17 +403,15 @@ def fetch_rss_articles(slot: int, max_articles: int = 30) -> str:
             link = item.get("link") or item.get("originallink", "")
             desc = re.sub(r"<[^>]+>", "", item.get("description", ""))[:200].strip()
             pub_str = item.get("pubDate", "")
-            try:
-                from email.utils import parsedate_to_datetime
-                pub_dt = parsedate_to_datetime(pub_str).astimezone(KST)
-            except Exception:
+            pub_dt = _parse_pub_date(pub_str)
+            if pub_dt is None:
                 pub_dt = datetime.now(KST)
             if pub_dt < cutoff:
                 continue
             if title and link:
                 articles.append((pub_dt, f"제목: {title}\n요약: {desc}\n링크: {link}"))
 
-    # 클리앙 직접 스크래핑 (슬롯 3, 4)
+    # 클리얙 직접 스크래핑 (슬롯 3, 4)
     if slot in (3, 4):
         clien_articles = scrape_clien_board("park", count=25)
         articles.extend(clien_articles)
