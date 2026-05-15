@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 run_slot.py - 슬롯 실행 메인 스크립트
-GitHub Actions 또는 Claude Code 로컬 실행 지원
-TELEGRAM_BOT_TOKEN 없으면 stdout으로 출력
+GitHub Actions 또는 로컬에서 실행, 결과는 stdout 출력
 """
 
 import argparse
@@ -222,7 +221,7 @@ def search_naver_news(query: str, display: int = 30) -> list[dict]:
 
 
 def scrape_clien_board(board: str = "park", count: int = 25) -> list[tuple[datetime, str]]:
-    """클리얙 게시판 직접 스크래핑. BS4 없으면 빈 리스트."""
+    """클리앙 게시판 직접 스크래핑. BS4 없으면 빈 리스트."""
     if not BS4_AVAILABLE:
         return []
     url = f"https://www.clien.net/service/board/{board}"
@@ -236,11 +235,11 @@ def scrape_clien_board(board: str = "park", count: int = 25) -> list[tuple[datet
             if not title or not href:
                 continue
             link = "https://www.clien.net" + href if href.startswith("/") else href
-            results.append((datetime.now(KST), f"제목: [클리얙 파크] {title}\n요약: \n링크: {link}"))
-        print(f"클리얙 {board} 스크래핑: {len(results)}개")
+            results.append((datetime.now(KST), f"제목: [클리앙 파크] {title}\n요약: \n링크: {link}"))
+        print(f"클리앙 {board} 스크래핑: {len(results)}개")
         return results
     except Exception as e:
-        print(f"클리얙 스크래핑 실패 [{board}]: {e}")
+        print(f"클리앙 스크래핑 실패 [{board}]: {e}")
         return []
 
 
@@ -348,7 +347,6 @@ def fetch_rss_articles(slot: int, max_articles: int = 30) -> str:
     wide_cutoff = now - timedelta(days=7)
     articles: list[tuple[datetime, str]] = []
 
-    # RSS 피드 수집
     for key in feed_keys:
         primary = RSS_FEEDS.get(key, "")
         fallback = RSS_FALLBACK.get(key, "")
@@ -392,7 +390,6 @@ def fetch_rss_articles(slot: int, max_articles: int = 30) -> str:
             except Exception as e:
                 print(f"RSS 파싱 실패 [{key}] {source}: {e}")
 
-    # Naver News API (NAVER_CLIENT_ID 설정 시)
     naver_queries = SLOT_NAVER_QUERIES.get(slot, [])
     for query in naver_queries:
         items = search_naver_news(query, display=30)
@@ -402,8 +399,7 @@ def fetch_rss_articles(slot: int, max_articles: int = 30) -> str:
             title = re.sub(r"<[^>]+>", "", item.get("title", "")).strip()
             link = item.get("link") or item.get("originallink", "")
             desc = re.sub(r"<[^>]+>", "", item.get("description", ""))[:200].strip()
-            pub_str = item.get("pubDate", "")
-            pub_dt = _parse_pub_date(pub_str)
+            pub_dt = _parse_pub_date(item.get("pubDate", ""))
             if pub_dt is None:
                 pub_dt = datetime.now(KST)
             if pub_dt < cutoff:
@@ -411,10 +407,8 @@ def fetch_rss_articles(slot: int, max_articles: int = 30) -> str:
             if title and link:
                 articles.append((pub_dt, f"제목: {title}\n요약: {desc}\n링크: {link}"))
 
-    # 클리얙 직접 스크래핑 (슬롯 3, 4)
     if slot in (3, 4):
-        clien_articles = scrape_clien_board("park", count=25)
-        articles.extend(clien_articles)
+        articles.extend(scrape_clien_board("park", count=25))
 
     articles.sort(key=lambda x: x[0], reverse=True)
     seen, unique = set(), []
@@ -486,56 +480,14 @@ def call_claude(system_prompt: str, slot: int, articles: str) -> str:
     return clean
 
 
-def _send_debug(msg: str, slot: int):
-    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    if not bot_token:
-        print(f"[DEBUG SLOT {slot}] {msg}")
-        return
-    try:
-        chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
-        requests.post(
-            f"https://api.telegram.org/bot{bot_token}/sendMessage",
-            json={"chat_id": chat_id, "text": f"🔧 DEBUG SLOT {slot}\n\n{msg}"},
-            timeout=10,
-        )
-    except Exception:
-        pass
-
-
-def send_telegram(text: str, slot: int):
-    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
+def print_result(text: str, slot: int):
     today = today_kst()
-    full_message = f"📋 {SLOT_LABEL[slot]}\n🗓 {today}\n\n{text}"
-
-    # 로컬 실행 모드: 토큰 없으면 stdout 출력
-    if not bot_token or not chat_id:
-        print("\n" + "=" * 60)
-        print(full_message)
-        print("=" * 60)
-        return
-
-    chunks = []
-    while full_message:
-        if len(full_message) <= 4096:
-            chunks.append(full_message)
-            break
-        split_at = full_message.rfind("\n", 0, 4096)
-        if split_at == -1:
-            split_at = 4096
-        chunks.append(full_message[:split_at])
-        full_message = full_message[split_at:].lstrip("\n")
-
-    for chunk in chunks:
-        resp = requests.post(
-            f"https://api.telegram.org/bot{bot_token}/sendMessage",
-            json={"chat_id": chat_id, "text": chunk, "disable_web_page_preview": False},
-            timeout=10,
-        )
-        if resp.status_code != 200:
-            print(f"텔레그램 발송 실패: {resp.status_code} {resp.text}", file=sys.stderr)
-            sys.exit(1)
-    print(f"텔레그램 발송 완료 → chat_id: {chat_id} ({len(chunks)}개 메시지)")
+    print("\n" + "=" * 60)
+    print(f"📋 {SLOT_LABEL[slot]}")
+    print(f"🗓 {today}")
+    print("=" * 60)
+    print(text)
+    print("=" * 60)
 
 
 def extract_keywords(result_text: str) -> list:
@@ -574,14 +526,11 @@ def main():
         _run(slot)
     except Exception as e:
         import traceback
-        err = traceback.format_exc()
-        print(err, file=sys.stderr)
-        _send_debug(f"[SLOT {slot}] 예외 발생\n{type(e).__name__}: {e}\n\n{err[:500]}", slot)
+        print(traceback.format_exc(), file=sys.stderr)
         sys.exit(1)
 
 
 def _run(slot: int):
-
     history_data = load_history()
     history_data = clean_expired(history_data)
     blacklist = get_blacklist(history_data)
@@ -593,7 +542,7 @@ def _run(slot: int):
     print(f"수집된 기사: {article_count}개")
 
     if not articles:
-        _send_debug(f"[SLOT {slot}] RSS 기사 0건 — 수집 실패", slot)
+        print(f"[SLOT {slot}] RSS 기사 0건 — 수집 실패")
         sys.exit(0)
 
     system_prompt = build_system_prompt(slot, blacklist)
@@ -602,20 +551,13 @@ def _run(slot: int):
     print("Claude API 호출 중 (포맷팅)...")
     result = call_claude(system_prompt, slot, articles)
     print(f"결과: {len(result)}자")
-    print(result[:300] + "..." if len(result) > 300 else result)
 
     if not is_valid_result(result):
-        _send_debug(
-            f"[SLOT {slot}] is_valid_result 실패\n"
-            f"길이: {len(result)}자\n"
-            f"Claude 출력:\n{result[:300]}",
-            slot,
-        )
-        print("유효한 소재 없음 — 전송 건너뜀")
-        print(f"=== SLOT {slot} 완료 (전송 없음) ===")
+        print(f"유효한 소재 없음 (길이: {len(result)}자)")
+        print(f"=== SLOT {slot} 완료 (출력 없음) ===")
         sys.exit(0)
 
-    send_telegram(result, slot)
+    print_result(result, slot)
 
     keywords = extract_keywords(result)
     if keywords:
